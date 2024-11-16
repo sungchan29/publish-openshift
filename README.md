@@ -1,2 +1,1 @@
 # publish-openshift
-# publish-openshift
