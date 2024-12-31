@@ -361,11 +361,11 @@ cat << EOF > ./${CLUSTER_NAME}/orig/openshift/idms-redhat-operator.yaml
 apiVersion: config.openshift.io/v1
 kind: ImageDigestMirrorSet
 metadata:
-  name: redhat
+  name: olm-redhat
 spec:
   imageDigestMirrors:
   - mirrors:
-    - $MIRROR_REGISTRY
+    - $MIRROR_REGISTRY/olm-redhat
     source: registry.redhat.io
 EOF
 
