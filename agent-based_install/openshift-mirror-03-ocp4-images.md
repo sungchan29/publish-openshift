@@ -95,8 +95,6 @@ mirror:
     - name: ${prefix}-${major_minor}
       minVersion: '$major_minor.$patch'
       maxVersion: '$major_minor.$patch'
-    additionalImages:
-    - name: $SUPPORT_TOOLS_IMAGE
 EOF
 done
 ```
