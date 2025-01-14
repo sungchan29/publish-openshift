@@ -90,10 +90,6 @@ if [[ -z "${SUPPORT_TOOLS_IMAGE}" ]]; then
     echo "ERROR: SUPPORT_TOOLS_IMAGE variable is empty. Exiting..."
     exit 1
 fi
-if [[ ! -f ./Dockerfile ]]; then
-    echo "ERROR: Cannot access './Dockerfile'. File or directory does not exist. Exiting..."
-    exit 1
-fi
 
 # Create the DOWNLOAD_DIRECTORY, and exit if creation fails
 if [[ -d "$DOWNLOAD_DIRECTORY" ]]; then
@@ -165,7 +161,10 @@ fi
 ### 2. OpenShift Grapth Data Image
 create_dockerfile
 
-if [[ -f ./Dockerfile ]]; then
+if [[ ! -f ./Dockerfile ]]; then
+    echo "ERROR: Cannot access './Dockerfile'. File or directory does not exist. Exiting..."
+    exit 1
+else
     podman build -t localhost/openshift/graph-data:latest -f ./Dockerfile
     podman save     localhost/openshift/graph-data:latest >  ${DOWNLOAD_DIRECTORY}/localhost_graph-data.tar
 fi
