@@ -40,6 +40,23 @@ if [[ -f ${DOWNLOAD_DIRECTORY}/${openshift_install_file} ]]; then
     echo ""
 fi
 
+RHEL_VERSION=$(grep -oP '(?<=VERSION_ID=")[0-9]+' /etc/os-release)
+openshift_client_file=""
+if [[ "$RHEL_VERSION" == "8" ]]; then
+    openshift_client_file="openshift-client-linux-amd64-rhel8-v${OCP_VERSION}.tar.gz"
+elif [[ "$RHEL_VERSION" == "9" ]]; then
+    openshift_client_file="openshift-client-linux-amd64-rhel9-v${OCP_VERSION}.tar.gz"
+fi
+if [[ -f ${DOWNLOAD_DIRECTORY}/${openshift_client_file} ]]; then
+    if [[ -f ./oc ]]; then
+        rm -f ./oc
+    fi
+    tar --exclude='README.md' -xvf ${DOWNLOAD_DIRECTORY}/${openshift_client_file} -C ./
+    chmod ug+x ./oc
+    ./oc version --client
+    echo ""
+fi
+
 if [[ -f ${DOWNLOAD_DIRECTORY}/butane ]]; then
     if [[ -f ./butane ]]; then
         rm -f ./butane
