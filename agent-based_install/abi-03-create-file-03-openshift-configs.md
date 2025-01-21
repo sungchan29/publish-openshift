@@ -365,8 +365,24 @@ metadata:
 spec:
   imageDigestMirrors:
   - mirrors:
-    - $MIRROR_REGISTRY/olm-redhat
+    - ${MIRROR_REGISTRY}/olm-redhat
     source: registry.redhat.io
+EOF
+
+
+cat << EOF > ./${CLUSTER_NAME}/orig/openshift/itms-support-tools.yml
+apiVersion: config.openshift.io/v1
+kind: ImageTagMirrorSet
+metadata:
+    name: support-tools-eventrouter
+spec:
+  imageTagMirrors:
+  - mirrors:
+    - ${MIRROR_REGISTRY}/rhel9/support-tools
+    source: registry.redhat.io/rhel9/support-tools
+  - mirrors:
+    - ${MIRROR_REGISTRY}/openshift-logging/eventrouter-rhel9
+    source: registry.redhat.io/openshift-logging/eventrouter-rhel9
 EOF
 
 ### Config mirror registry
