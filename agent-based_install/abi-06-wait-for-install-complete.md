@@ -62,25 +62,6 @@ while true; do
       echo "[$(date +"%Y-%m-%d %H:%M:%S")] Found target string: '$search_string'. Stopping the process..." >> $LOG_FILE
       kill "$bootstrap_complete_pid"
     fi
-
-    # Execute additional logic here
-    if [[ -n "$NODE_ROLE_SELECTORS" ]]; then
-      for node_role_selector in $NODE_ROLE_SELECTORS; do
-        if [[ "$node_role_selector" != *"--"* ]]; then
-          echo "[$(date +"%Y-%m-%d %H:%M:%S")] Invalid NODE_ROLE_SELECTORS format: $node_role_selector" >> $LOG_FILE
-          continue
-        fi
-
-        node_role=$(echo $node_role_selector | awk -F "--" '{print $1}')
-        node_prefix=$(echo $node_role_selector | awk -F "--" '{print $2}')
-
-        for node in $(oc get nodes -o name | awk -F "/" '{print $2}' | grep "${node_prefix}"); do
-          echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
-          oc label node $node node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
-        done
-      done
-    fi
-    break
   else
     # Check if the process is still running
     if ! ps -p "$bootstrap_complete_pid" > /dev/null; then
@@ -128,6 +109,26 @@ while true; do
     exit 1
   fi
 
+  # oc label node $node node-role.kubernetes.io/${node_role}= --overwrite=true
+  if
+    if [[ -n "$NODE_ROLE_SELECTORS" ]]; then
+      for node_role_selector in $NODE_ROLE_SELECTORS; do
+        if [[ "$node_role_selector" != *"--"* ]]; then
+          echo "[$(date +"%Y-%m-%d %H:%M:%S")] Invalid NODE_ROLE_SELECTORS format: $node_role_selector" >> $LOG_FILE
+          continue
+        fi
+
+        node_role=$(echo $node_role_selector | awk -F "--" '{print $1}')
+        node_prefix=$(echo $node_role_selector | awk -F "--" '{print $2}')
+
+        for node in $(oc get nodes -o name | awk -F "/" '{print $2}' | grep "${node_prefix}"); do
+          echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
+          oc label node $node node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
+        done
+      done
+    fi
+  fi
+
   # Check for the target string in the log file
   if grep -q "$search_string" "$install_complete_log_file"; then
     if ps -p "$install_complete_pid" > /dev/null; then
@@ -139,7 +140,6 @@ while true; do
     #
     #
     #
-    
 
     break
   else
