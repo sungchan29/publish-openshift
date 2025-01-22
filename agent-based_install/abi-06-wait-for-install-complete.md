@@ -102,7 +102,7 @@ done
 
 
 install_complete_log_file="./wait-for_install-complete.log"
-search_string="Install complete!"
+search_string="Cluster is installed"
 timeout=3600  # 60 minutes (in seconds)
 
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Run the command openshift-install wait-for install-complete" >> $LOG_FILE
