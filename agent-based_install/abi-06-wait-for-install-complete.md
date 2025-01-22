@@ -36,7 +36,7 @@ timeout=3600  # 60 minutes (in seconds)
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Run the command openshift-install wait-for bootstrap-complete" > $LOG_FILE
 
 # Run the openshift-install command and log the output
-./openshift-install agent wait-for bootstrap-complete --dir ./cloudpang --log-level=info > "$bootstrap_complete_log_file" 2>&1 &
+./openshift-install agent wait-for bootstrap-complete --dir ./cloudpang --log-level=debug > "$bootstrap_complete_log_file" 2>&1 &
 bootstrap_complete_pid=$!
 run_count=1  # Initialize run count
 
@@ -86,7 +86,7 @@ while true; do
     if ! ps -p "$bootstrap_complete_pid" > /dev/null; then
       if [[ $run_count -lt 2 ]]; then
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process for 'openshift-install' stopped unexpectedly. Restarting (Attempt $((run_count + 1)))..." >> $LOG_FILE
-        ./openshift-install agent wait-for bootstrap-complete --dir ./cloudpang --log-level=info > "$bootstrap_complete_log_file" 2>&1 &
+        ./openshift-install agent wait-for bootstrap-complete --dir ./cloudpang --log-level=debug > "$bootstrap_complete_log_file" 2>&1 &
         bootstrap_complete_pid=$!
         run_count=$((run_count + 1))  # Increment run count
       else
@@ -108,7 +108,7 @@ timeout=3600  # 60 minutes (in seconds)
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Run the command openshift-install wait-for install-complete" >> $LOG_FILE
 
 # Run the openshift-install command and log the output
-./openshift-install agent wait-for install-complete --dir ./cloudpang --log-level=info > "$install_complete_log_file" 2>&1 &
+./openshift-install agent wait-for install-complete --dir ./cloudpang --log-level=debug > "$install_complete_log_file" 2>&1 &
 install_complete_pid=$!
 run_count=1  # Initialize run count
 
@@ -147,7 +147,7 @@ while true; do
     if ! ps -p "$install_complete_pid" > /dev/null; then
       if [[ $run_count -lt 2 ]]; then
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process for 'openshift-install' stopped unexpectedly. Restarting (Attempt $((run_count + 1)))..." >> $LOG_FILE
-        ./openshift-install agent wait-for install-complete --dir ./cloudpang --log-level=info > "$install_complete_log_file" 2>&1 &
+        ./openshift-install agent wait-for install-complete --dir ./cloudpang --log-level=debug > "$install_complete_log_file" 2>&1 &
         install_complete_pid=$!
         run_count=$((run_count + 1))  # Increment run count
       else
