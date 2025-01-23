@@ -43,13 +43,21 @@ else
     exit 1
 fi
 
+
+# Get the absolute path of the script
+script_name=$(realpath "$0")
+
 # Check if the script is already running
-if [[ $(pgrep -f "$(basename "$0")" | wc -l) -gt 1 ]]; then
+running_count=$(pgrep -f "$script_name" | grep -vw $$ | wc -l)
+
+if [[ -n "$running_count" && $running_count -gt 0 ]]; then
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script is already running. Exiting..." >> $LOG_FILE
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Running instances count: $running_count" >> $LOG_FILE
     exit 1
 else
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script has started successfully." > $LOG_FILE
 fi
+
 
 ### Bootstrap-complete process
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Executing 'openshift-install wait-for bootstrap-complete'..." >> $LOG_FILE
@@ -196,6 +204,6 @@ done
 
 ```bash
 
-nohup sh abi-06-wait-for-install-complete.sh > /dev/null 2>&1 &
+nohup sh abi-06-wait-for-install-complete.sh &
 
 ```
