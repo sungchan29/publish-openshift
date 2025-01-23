@@ -60,9 +60,9 @@ echo $$ > "$PID_FILE"
 trap "rm -f '$PID_FILE' || echo 'Warning: Failed to delete PID file' >> $LOG_FILE" EXIT
 
 ###
+### Log script start
 ###
-###
-echo "[$(date +"%Y-%m-%d %H:%M:%S")] Executing '$(basename "$0")'..." > $LOG_FILE
+echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script has started successfully." > "$LOG_FILE"
 
 ###
 ### Bootstrap-complete process
@@ -208,8 +208,7 @@ while true; do
     sleep 5
 done
 
-# Log script start
-echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script has started successfully." > "$LOG_FILE"
+
 ```
 
 
