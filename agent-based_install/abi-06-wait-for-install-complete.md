@@ -122,6 +122,9 @@ while true; do
     sleep 5
 done
 
+###
+### Log script completion
+###
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script completed successfully." >> "$LOG_FILE"
 ```
 
