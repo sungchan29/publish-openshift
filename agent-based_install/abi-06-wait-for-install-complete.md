@@ -20,18 +20,18 @@ install_search_string="Cluster is installed"
 ### Timeout for OpenShift commands
 timeout=3600  # 60 minutes (in seconds)
 
-#####################
+
 # Source the configuration file
 if [[ -f ./abi-01-config-preparation-01-general.sh ]]; then
     source "./abi-01-config-preparation-01-general.sh"
 else
-    echo "ERROR: Cannot access './abi-01-config-preparation-01-general.sh'. File or directory does not exist. Exiting..." >> $LOG_FILE
+    echo "ERROR: Cannot access './abi-01-config-preparation-01-general.sh'. File or directory does not exist. Exiting..." > $LOG_FILE
     exit 1
 fi
 
 # Validate cluster name
 if [[ -z "${CLUSTER_NAME}" ]]; then
-    echo "ERROR: CLUSTER_NAME variable is empty. Exiting..." >> $LOG_FILE
+    echo "ERROR: CLUSTER_NAME variable is empty. Exiting..." > $LOG_FILE
     exit 1
 fi
 
@@ -39,25 +39,34 @@ fi
 if [[ -f ./openshift-install && -f ./oc ]]; then
     export KUBECONFIG="./${CLUSTER_NAME}/auth/kubeconfig"
 else
-    echo "ERROR: Required binaries (openshift-install, oc) not found. Exiting..." >> $LOG_FILE
+    echo "ERROR: Required binaries (openshift-install, oc) not found. Exiting..." > $LOG_FILE
     exit 1
 fi
 
 
-PID_FILE="/tmp/$(basename "$0").pid"
+PID_FILE="/tmp/$(basename "$0").$(realpath "$0" | md5sum | cut -d' ' -f1).pid"
 # Check if the script is already running
-if [[ -f "$PID_FILE" && -d "/proc/$(cat "$PID_FILE")" ]]; then
-    running_pid=$(cat "$PID_FILE")
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script is already running with PID $running_pid. Exiting..." >> "$LOG_FILE"
-    exit 1
+if [[ -f "$PID_FILE" ]]; then
+    pid=$(cat "$PID_FILE")
+    if [[ ! "$pid" =~ ^[0-9]+$ ]] || [[ ! -d "/proc/$pid" ]]; then
+        rm -f "$PID_FILE"
+    else
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script is already running with PID $pid. Exiting..." >> "$LOG_FILE"
+        exit 1
+    fi
 fi
 # Save the current PID to the PID file
 echo $$ > "$PID_FILE"
-# Ensure the PID file is deleted when the script exits
-trap "rm -f '$PID_FILE'" EXIT
+trap "rm -f '$PID_FILE' || echo 'Warning: Failed to delete PID file' >> $LOG_FILE" EXIT
 
+###
+###
+###
+echo "[$(date +"%Y-%m-%d %H:%M:%S")] Executing '$(basename "$0")'..." > $LOG_FILE
 
+###
 ### Bootstrap-complete process
+###
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Executing 'openshift-install wait-for bootstrap-complete'..." >> $LOG_FILE
 
 # Run the bootstrap-complete command
@@ -115,7 +124,9 @@ while true; do
     sleep 5
 done
 
+###
 ### Install-complete process
+###
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Executing 'openshift-install wait-for install-complete'..." >> $LOG_FILE
 
 # Run the install-complete command
