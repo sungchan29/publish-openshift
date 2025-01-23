@@ -44,19 +44,17 @@ else
 fi
 
 
-# Get the absolute path of the script
-script_name=$(realpath "$0")
-
+PID_FILE="/tmp/$(basename "$0").pid"
 # Check if the script is already running
-running_count=$(pgrep -f "$script_name" | grep -vw $$ | wc -l)
-
-if [[ -n "$running_count" && $running_count -gt 0 ]]; then
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script is already running. Exiting..." >> $LOG_FILE
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Running instances count: $running_count" >> $LOG_FILE
+if [[ -f "$PID_FILE" && -d "/proc/$(cat "$PID_FILE")" ]]; then
+    running_pid=$(cat "$PID_FILE")
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script is already running with PID $running_pid. Exiting..." >> "$LOG_FILE"
     exit 1
-else
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script has started successfully." > $LOG_FILE
 fi
+# Save the current PID to the PID file
+echo $$ > "$PID_FILE"
+# Ensure the PID file is deleted when the script exits
+trap "rm -f '$PID_FILE'" EXIT
 
 
 ### Bootstrap-complete process
@@ -198,6 +196,9 @@ while true; do
 
     sleep 5
 done
+
+# Log script start
+echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script has started successfully." > "$LOG_FILE"
 ```
 
 
