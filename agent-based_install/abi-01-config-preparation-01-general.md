@@ -11,9 +11,9 @@ vi abi-01-config-preparation-01-general.sh
 
 ```bash
 #!/bin/bash
-OCP_VERSION="4.17.3"
+OCP_VERSION="4.17.9"
 
-DOWNLOAD_DIRECTORY="/root/Downloads/ocp/mirror_workspace/ocp4-install-files-v4.16.7--4.16.19--4.17.3"
+DOWNLOAD_DIRECTORY="/root/Downloads/ocp/mirror_workspace/ocp4-install-files-v4.17.9--4.17.10"
 
 ### Mirror Registry
 MIRROR_REGISTRY_TRUST_FILE="/etc/pki/ca-trust/source/anchors/nexus.cloudpang.tistory.disconnected.pem"
@@ -24,7 +24,8 @@ MIRROR_REGISTRY_PASSWORD="redhat1!"
 
 LOCAL_REPOSITORY_NAME="ocp4/openshift"
 
-OLM_OPERATORS="redhat--certified--community"
+#OLM_OPERATORS="redhat--certified--community"
+OLM_OPERATORS="redhat"
 
 ###
 ### agent-config.yaml
@@ -73,7 +74,6 @@ NODE_INFO_LIST=" \
 ### role--node_prefix
 NODE_ROLE_SELECTORS=" \
 infra--infra \
-egress--egress \
 "
 
 #INGRESS_NODE_SELECTOR_MATCH_LABEL_KEY="node-role.kubernetes.io/infra"
