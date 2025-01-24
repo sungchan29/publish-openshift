@@ -89,27 +89,29 @@ wait_for_completion() {
             ### install-complete
             ### Apply node labels if not already applied
             if [[ "install-complete" == "$command" && "$all_labels_applied" == "false" && -n "$NODE_ROLE_SELECTORS" ]]; then
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
-                all_labels_applied=true
-                for node_role_selector in $NODE_ROLE_SELECTORS; do
-                    node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
-                    node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
-                    for node in $(oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}"); do
-                        current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
-                        if [[ -z "$current_label" ]]; then
-                            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
-                            oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
-                            sleep 2
+                if grep -q "OpenShift console route is admitted" "$log_file"; then
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
+                    all_labels_applied=true
+                    for node_role_selector in $NODE_ROLE_SELECTORS; do
+                        node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
+                        node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
+                        for node in $(oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}"); do
                             current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
                             if [[ -z "$current_label" ]]; then
-                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Failed to label node: $node with role: $node_role" >> $LOG_FILE
-                                all_labels_applied=false  # Mark as false if labeling fails
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
+                                oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
+                                sleep 2
+                                current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
+                                if [[ -z "$current_label" ]]; then
+                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Failed to label node: $node with role: $node_role" >> $LOG_FILE
+                                    all_labels_applied=false  # Mark as false if labeling fails
+                                fi
+                            else
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
                             fi
-                        else
-                            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
-                        fi
+                        done
                     done
-                done
+                fi
             fi
 
             if grep -q "$search_string" "$log_file"; then
