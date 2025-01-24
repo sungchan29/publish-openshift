@@ -47,7 +47,7 @@ else
 fi
 
 # PID file
-PID_FILE="/tmp/$(basename "$0").$(realpath "$0" | md5sum | cut -d' ' -f1).pid"
+PID_FILE="./$(basename "$0").$(realpath "$0" | md5sum | cut -d' ' -f1).pid"
 # Check if the script is already running
 if [[ -f "$PID_FILE" ]]; then
     pid=$(cat "$PID_FILE")
