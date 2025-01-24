@@ -90,12 +90,15 @@ wait_for_completion() {
             ### install-complete
             ### Apply node labels if not already applied
             if [[ "install-complete" == "$command" && "$all_labels_applied" == "false" && -n "$NODE_ROLE_SELECTORS" ]]; then
-                if grep -q "OpenShift console route is admitted" "$log_file"; then
+                if grep "OpenShift console route is admitted" "$log_file"; then
                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
+                    echo "$NODE_ROLE_SELECTORS" >> $LOG_FILE
                     all_labels_applied=true
                     for node_role_selector in $NODE_ROLE_SELECTORS; do
                         node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
                         node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
+                        echo "$node_role" >> $LOG_FILE
+                        echo "$node_prefix" >> $LOG_FILE
                         for node in $(oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}"); do
                             current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
                             if [[ -z "$current_label" ]]; then
@@ -115,7 +118,7 @@ wait_for_completion() {
                 fi
             fi
 
-            if grep -q "$search_string" "$log_file"; then
+            if grep "$search_string" "$log_file"; then
                 echo "" >> "$LOG_FILE"
                 if [[ -d "/proc/$process_pid" ]]; then
                     if kill -9 "$process_pid" 2>/dev/null; then
