@@ -140,12 +140,12 @@ wait_for_completion() {
 ###
 ### bootstrap-complete process
 ###
-wait_for_completion "bootstrap-complete" "$BOOTSTRAP_SEARCH_STRING" "$BOOTSTRAP_COMPLETE_LOG_FILE" $timeout
+wait_for_completion "bootstrap-complete" "$BOOTSTRAP_SEARCH_STRING" "$BOOTSTRAP_COMPLETE_LOG_FILE"
 
 ###
 ### install-complete process
 ###
-wait_for_completion "install-complete" "$INSTALL_SEARCH_STRING" "$INSTALL_COMPLETE_LOG_FILE" $timeout
+wait_for_completion "install-complete" "$INSTALL_SEARCH_STRING" "$INSTALL_COMPLETE_LOG_FILE"
 
 
 ###
