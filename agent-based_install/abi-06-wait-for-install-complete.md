@@ -86,6 +86,7 @@ wait_for_completion() {
         local all_labels_applied=false
         local start_time=$(date +%s)
         while true; do
+            echo -n "." >> "$LOG_FILE"
             ### install-complete
             ### Apply node labels if not already applied
             if [[ "install-complete" == "$command" && "$all_labels_applied" == "false" && -n "$NODE_ROLE_SELECTORS" ]]; then
@@ -115,6 +116,7 @@ wait_for_completion() {
             fi
 
             if grep -q "$search_string" "$log_file"; then
+                echo "" >> "$LOG_FILE"
                 if [[ -d "/proc/$process_pid" ]]; then
                     if kill -9 "$process_pid" 2>/dev/null; then
                         echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid terminated." >> "$LOG_FILE"
@@ -126,12 +128,14 @@ wait_for_completion() {
                 return 0
             else
                 if [[ ! -d "/proc/$process_pid" ]]; then
+                    echo "" >> "$LOG_FILE"
                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid is no longer running." >> "$LOG_FILE"
                     break
                 fi
             fi
 
             if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
+                echo "" >> "$LOG_FILE"
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command '$command' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
                 if [[ -d "/proc/$process_pid" ]]; then
                     if kill -9 "$process_pid" 2>/dev/null; then
@@ -143,10 +147,11 @@ wait_for_completion() {
                 exit 1
             fi
 
-            sleep 5
+            sleep 1
         done
 
         retries=$((retries + 1))
+        echo "" >> "$LOG_FILE"
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] Retrying process ($retries/$MAX_RETRIES)..." >> "$LOG_FILE"
     done
 
