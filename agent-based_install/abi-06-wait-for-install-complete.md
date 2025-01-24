@@ -85,7 +85,7 @@ wait_for_completion() {
 
         local all_labels_applied=false
         local start_time=$(date +%s)
-        while ps -p $process_pid > /dev/null; do
+        while true; do
             ### install-complete
             ### Apply node labels if not already applied
             if [[ "install-complete" == "$command" ]]; then
@@ -116,12 +116,12 @@ wait_for_completion() {
 
             if grep -q "$search_string" "$log_file"; then
                 kill "$process_pid" 2>/dev/null
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process($command) completed successfully." >> "$LOG_FILE"
                 return 0
             fi
 
             if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Timeout reached. Terminating process $process_pid..." >> "$LOG_FILE"
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Timeout reached($command). Terminating process $process_pid..." >> "$LOG_FILE"
                 kill "$process_pid" 2>/dev/null
                 exit 1
             fi
