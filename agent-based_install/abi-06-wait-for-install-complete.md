@@ -88,50 +88,55 @@ wait_for_completion() {
         while true; do
             ### install-complete
             ### Apply node labels if not already applied
-            if [[ "install-complete" == "$command" ]]; then
-                if [[ "$all_labels_applied" == "false" && -n "$NODE_ROLE_SELECTORS" ]]; then
-                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
-                    all_labels_applied=true
-                    for node_role_selector in $NODE_ROLE_SELECTORS; do
-                        node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
-                        node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
-                        for node in $(oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}"); do
+            if [[ "install-complete" == "$command" && "$all_labels_applied" == "false" && -n "$NODE_ROLE_SELECTORS" ]]; then
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
+                all_labels_applied=true
+                for node_role_selector in $NODE_ROLE_SELECTORS; do
+                    node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
+                    node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
+                    for node in $(oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}"); do
+                        current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
+                        if [[ -z "$current_label" ]]; then
+                            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
+                            oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
+                            sleep 2
                             current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
                             if [[ -z "$current_label" ]]; then
-                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
-                                oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
-                                sleep 3
-                                current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
-                                if [[ -z "$current_label" ]]; then
-                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Failed to label node: $node with role: $node_role" >> $LOG_FILE
-                                    all_labels_applied=false  # Mark as false if labeling fails
-                                fi
-                            else
-                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Failed to label node: $node with role: $node_role" >> $LOG_FILE
+                                all_labels_applied=false  # Mark as false if labeling fails
                             fi
-                        done
+                        else
+                            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
+                        fi
                     done
-                fi
+                done
             fi
 
             if grep -q "$search_string" "$log_file"; then
-                kill -9 "$process_pid" 2>/dev/null
-                if [[ $? -ne 0 ]]; then
-                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Failed to terminate process $process_pid" >> "$LOG_FILE"
+                if [[ -d "/proc/$process_pid" ]]; then
+                    if kill -9 "$process_pid" 2>/dev/null; then
+                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid terminated." >> "$LOG_FILE"
+                    else
+                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Failed to terminate process $process_pid" >> "$LOG_FILE"
+                    fi
                 fi
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process($command) completed successfully." >> "$LOG_FILE"
                 return 0
             else
-                if ! ps -p $process_pid > /dev/null; then
+                if [[ ! -d "/proc/$process_pid" ]]; then
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid is no longer running." >> "$LOG_FILE"
                     break
                 fi
             fi
 
             if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command '$command' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
-                kill -9 "$process_pid" 2>/dev/null
-                if [[ $? -ne 0 ]]; then
-                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Failed to terminate process $process_pid" >> "$LOG_FILE"
+                if [[ -d "/proc/$process_pid" ]]; then
+                    if kill -9 "$process_pid" 2>/dev/null; then
+                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid terminated." >> "$LOG_FILE"
+                    else
+                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Failed to terminate process $process_pid" >> "$LOG_FILE"
+                    fi
                 fi
                 exit 1
             fi
@@ -143,8 +148,8 @@ wait_for_completion() {
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] Retrying process ($retries/$MAX_RETRIES)..." >> "$LOG_FILE"
     done
 
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process failed after $MAX_RETRIES attempts." >> "$LOG_FILE"
-    return 1
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process($command) failed after $MAX_RETRIES attempts." >> "$LOG_FILE"
+    exit 1
 }
 
 ###
