@@ -123,7 +123,7 @@ wait_for_completion() {
             if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Timeout reached. Terminating process $process_pid..." >> "$LOG_FILE"
                 kill "$process_pid" 2>/dev/null
-                break
+                exit 1
             fi
 
             sleep 5
