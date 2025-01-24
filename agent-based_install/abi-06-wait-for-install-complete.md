@@ -10,15 +10,18 @@ vi abi-06-wait-for-install-complete.sh
 LOG_FILE="$(basename "$0" .sh).log"
 
 ### Log file for bootstrap-complete
-bootstrap_complete_log_file="./wait-for_bootstrap-complete.log"
-bootstrap_search_string="cluster bootstrap is complete"
+BOOTSTRAP_COMPLETE_LOG_FILE="./wait-for_bootstrap-complete.log"
+BOOTSTRAP_SEARCH_STRING="cluster bootstrap is complete"
 
 ### Log file for install-complete
-install_complete_log_file="./wait-for_install-complete.log"
-install_search_string="Cluster is installed"
+INSTALL_COMPLETE_LOG_FILE="./wait-for_install-complete.log"
+INSTALL_SEARCH_STRING="Cluster is installed"
+
+
+MAX_RETRIES=2
 
 ### Timeout for OpenShift commands
-timeout=3600  # 60 minutes (in seconds)
+TIMEOUT=3600  # 60 minutes (in seconds)
 
 
 # Source the configuration file
@@ -45,7 +48,6 @@ fi
 
 # PID file
 PID_FILE="/tmp/$(basename "$0").$(realpath "$0" | md5sum | cut -d' ' -f1).pid"
-
 # Check if the script is already running
 if [[ -f "$PID_FILE" ]]; then
     pid=$(cat "$PID_FILE")
@@ -56,10 +58,8 @@ if [[ -f "$PID_FILE" ]]; then
         exit 1
     fi
 fi
-
 # Save the current PID to the PID file
 echo $$ > "$PID_FILE"
-
 # Trap to handle script exit
 trap "rm -f '$PID_FILE'" EXIT
 
@@ -69,132 +69,84 @@ trap "rm -f '$PID_FILE'" EXIT
 ###
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script has started successfully." > "$LOG_FILE"
 
-###
-### Bootstrap-complete process
-###
-echo "[$(date +"%Y-%m-%d %H:%M:%S")] Executing 'openshift-install wait-for bootstrap-complete'..." >> "$LOG_FILE"
 
-# Run the bootstrap-complete command
-./openshift-install agent wait-for bootstrap-complete --dir ./cloudpang --log-level=debug > "$bootstrap_complete_log_file" 2>&1 &
-bootstrap_complete_pid=$!
-echo "[$(date +"%Y-%m-%d %H:%M:%S")] Bootstrap-complete process PID: $bootstrap_complete_pid" >> "$LOG_FILE"
-run_count=1
+### Wait for completion with timeout and retries
+wait_for_completion() {
+    local command=$1
+    local search_string=$2
+    local log_file=$3
+    local process_pid
+    local retries=0
 
-# Start the timer
-start_time=$(date +%s)
+    while [[ $retries -lt $MAX_RETRIES ]]; do
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Starting process: $command..." >> "$LOG_FILE"
+        ./openshift-install agent wait-for $command --dir $CLUSTER_NAME --log-level=debug > "$log_file" 2>&1 &
+        process_pid=$!
 
-# Monitor bootstrap-complete process
-while true; do
-    current_time=$(date +%s)
-    elapsed_time=$((current_time - start_time))
-
-    # Check for timeout
-    if [[ $elapsed_time -ge $timeout ]]; then
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Timeout of $((timeout / 60)) minutes reached. Terminating process..." >> "$LOG_FILE"
-        if ps -p "$bootstrap_complete_pid" > /dev/null; then
-            kill "$bootstrap_complete_pid"
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $bootstrap_complete_pid terminated due to timeout." >> "$LOG_FILE"
-        fi
-        exit 1
-    fi
-
-    # Check for the completion message
-    if grep -q "$bootstrap_search_string" "$bootstrap_complete_log_file"; then
-        kill "$bootstrap_complete_pid" 2>/dev/null
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Bootstrap process completed successfully." >> "$LOG_FILE"
-        break
-    fi
-
-    # Restart process if it fails unexpectedly
-    if ! ps -p "$bootstrap_complete_pid" > /dev/null; then
-        if [[ $run_count -lt 2 ]]; then
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Bootstrap process stopped unexpectedly. Restarting (Attempt $((run_count + 1)))..." >> "$LOG_FILE"
-            ./openshift-install agent wait-for bootstrap-complete --dir ./cloudpang --log-level=debug > "$bootstrap_complete_log_file" 2>&1 &
-            bootstrap_complete_pid=$!
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Bootstrap-complete process PID: $bootstrap_complete_pid" >> "$LOG_FILE"
-            run_count=$((run_count + 1))
-        else
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Maximum retries reached. Exiting..." >> "$LOG_FILE"
-            exit 1
-        fi
-    fi
-
-    sleep 5
-done
-
-###
-### Install-complete process
-###
-echo "[$(date +"%Y-%m-%d %H:%M:%S")] Executing 'openshift-install wait-for install-complete'..." >> $LOG_FILE
-
-# Run the install-complete command
-./openshift-install agent wait-for install-complete --dir ./cloudpang --log-level=debug > "$install_complete_log_file" 2>&1 &
-install_complete_pid=$!
-echo "[$(date +"%Y-%m-%d %H:%M:%S")] Install-complete process PID: $install_complete_pid" >> $LOG_FILE
-run_count=1
-label_applied=false
-
-# Start the timer
-start_time=$(date +%s)
-
-# Monitor install-complete process
-while true; do
-    current_time=$(date +%s)
-    elapsed_time=$((current_time - start_time))
-
-    # Check for timeout
-    if [[ $elapsed_time -ge $timeout ]]; then
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Timeout of $((timeout / 60)) minutes reached. Terminating process..." >> $LOG_FILE
-        kill "$install_complete_pid"
-        exit 1
-    fi
-
-    # Apply node labels if not already applied
-    if [[ "$label_applied" == "false" && -n "$NODE_ROLE_SELECTORS" ]]; then
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
-        for node_role_selector in $NODE_ROLE_SELECTORS; do
-            node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
-            node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
-            for node in $(oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}"); do
-                if ! oc get node "$node" --show-labels | grep -q "node-role.kubernetes.io/${node_role}="; then
-                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node $node with role $node_role..." >> $LOG_FILE
-                    if oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
-                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Successfully labeled node $node." >> $LOG_FILE
-                    else
-                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Failed to label node $node. Retrying..." >> $LOG_FILE
-                    fi
+        local all_labels_applied=false
+        local start_time=$(date +%s)
+        while ps -p $process_pid > /dev/null; do
+            ### install-complete
+            ### Apply node labels if not already applied
+            if [[ "install-complete" == "$command" ]]; then
+                if [[ "$all_labels_applied" == "false" && -n "$NODE_ROLE_SELECTORS" ]]; then
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
+                    all_labels_applied=true
+                    for node_role_selector in $NODE_ROLE_SELECTORS; do
+                        node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
+                        node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
+                        for node in $(oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}"); do
+                            current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
+                            if [[ -z "$current_label" ]]; then
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
+                                oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
+                                sleep 3
+                                current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
+                                if [[ -z "$current_label" ]]; then
+                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Failed to label node: $node with role: $node_role" >> $LOG_FILE
+                                    all_labels_applied=false  # Mark as false if labeling fails
+                                fi
+                            else
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
+                            fi
+                        done
+                    done
                 fi
-            done
+            fi
+
+            if grep -q "$search_string" "$log_file"; then
+                kill "$process_pid" 2>/dev/null
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
+                return 0
+            fi
+
+            if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Timeout reached. Terminating process $process_pid..." >> "$LOG_FILE"
+                kill "$process_pid" 2>/dev/null
+                break
+            fi
+
+            sleep 5
         done
-        label_applied=true
-    fi
 
-    # Check for the completion message
-    if grep -q "$install_search_string" "$install_complete_log_file"; then
-        if ps -p "$install_complete_pid" > /dev/null; then
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Install complete detected. Terminating process..." >> $LOG_FILE
-            kill "$install_complete_pid"
-        fi
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Installation process completed successfully." >> $LOG_FILE
-        break
-    fi
+        retries=$((retries + 1))
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Retrying process ($retries/$MAX_RETRIES)..." >> "$LOG_FILE"
+    done
 
-    # Restart process if it fails unexpectedly
-    if ! ps -p "$install_complete_pid" > /dev/null; then
-        if [[ $run_count -lt 2 ]]; then
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Install process stopped unexpectedly. Restarting (Attempt $((run_count + 1)))..." >> $LOG_FILE
-            ./openshift-install agent wait-for install-complete --dir ./cloudpang --log-level=debug > "$install_complete_log_file" 2>&1 &
-            install_complete_pid=$!
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Install-complete process PID: $install_complete_pid" >> $LOG_FILE
-            run_count=$((run_count + 1))
-        else
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Maximum retries reached. Exiting..." >> $LOG_FILE
-            exit 1
-        fi
-    fi
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process failed after $MAX_RETRIES attempts." >> "$LOG_FILE"
+    return 1
+}
 
-    sleep 5
-done
+###
+### bootstrap-complete process
+###
+wait_for_completion "bootstrap-complete" "$BOOTSTRAP_SEARCH_STRING" "$BOOTSTRAP_COMPLETE_LOG_FILE" $timeout
+
+###
+### install-complete process
+###
+wait_for_completion "install-complete" "$INSTALL_SEARCH_STRING" "$INSTALL_COMPLETE_LOG_FILE" $timeout
+
 
 ###
 ### Log script completion
