@@ -115,14 +115,24 @@ wait_for_completion() {
             fi
 
             if grep -q "$search_string" "$log_file"; then
-                kill "$process_pid" 2>/dev/null
+                kill -9 "$process_pid" 2>/dev/null
+                if [[ $? -ne 0 ]]; then
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Failed to terminate process $process_pid" >> "$LOG_FILE"
+                fi
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process($command) completed successfully." >> "$LOG_FILE"
                 return 0
+            else
+                if ! ps -p $process_pid > /dev/null; then
+                    break
+                fi
             fi
 
             if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Timeout reached($command). Terminating process $process_pid..." >> "$LOG_FILE"
-                kill "$process_pid" 2>/dev/null
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command '$command' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
+                kill -9 "$process_pid" 2>/dev/null
+                if [[ $? -ne 0 ]]; then
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Failed to terminate process $process_pid" >> "$LOG_FILE"
+                fi
                 exit 1
             fi
 
