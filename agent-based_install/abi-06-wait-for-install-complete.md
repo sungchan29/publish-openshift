@@ -17,7 +17,7 @@ NODE_LABEL_TRIGGER_SEARCH_KEYWORD="cluster bootstrap is complete"
 MAX_RETRIES=2
 
 ### Timeout for OpenShift commands
-TIMEOUT=3600  # 60 minutes (in seconds)
+TIMEOUT=7200  # 120 minutes (in seconds)
 
 
 # Source the configuration file
@@ -130,11 +130,7 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
             INSTALL_COMPLETE_STATUS="SUCCESS"
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
             break
-        else
-            if [[ ! -d "/proc/$process_pid" ]]; then
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid is no longer running." >> "$LOG_FILE"
-                break
-            fi
+        fi
         fi
         if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command 'install-complete' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
@@ -145,13 +141,19 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
                 break
             fi
         fi
-        sleep 3
+        sleep 5
     done
 
     RETRIES=$((RETRIES + 1))
-    if [[ "SUCCESS" = "$INSTALL_COMPLETE_STATUS" ]]; then
+    if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
         break
     else
+        if [[ -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
+            if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
+                break
+            fi
+        fi
         if [[ $RETRIES -lt $MAX_RETRIES ]]; then
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] Retrying process ($RETRIES/$MAX_RETRIES)..." >> "$LOG_FILE"
         else
@@ -159,18 +161,23 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
             exit 1
        fi
     fi
+
+    if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" ]]; then
+        echo -n "." >> "$LOG_FILE"
+    fi
 done
 
 ###
 ### Log script completion
 ###
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script completed successfully." >> "$LOG_FILE"
+exit 0
 ```
 
 
 
 ```bash
 
-nohup sh abi-06-wait-for-install-complete.sh &
+nohup sh abi-06-wait-for-install-complete.sh > /dev/null 2>&1 &
 
 ```
