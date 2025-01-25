@@ -14,7 +14,7 @@ INSTALL_COMPLETE_LOG_FILE=$(realpath "./wait-for_install-complete.log")
 INSTALL_COMPLETE_SEARCH_KEYWORD="Cluster is installed"
 NODE_LABEL_TRIGGER_SEARCH_KEYWORD="cluster bootstrap is complete"
 
-MAX_RETRIES=2
+MAX_TRIES=3
 
 ### Timeout for OpenShift commands
 #TIMEOUT=7200  # 120 minutes (in seconds)
@@ -68,7 +68,7 @@ echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script has started successfully." > "
 
 INSTALL_COMPLETE_STATUS=""
 RETRIES=0
-while [[ $RETRIES -lt $MAX_RETRIES ]]; do
+while [[ $RETRIES -le $MAX_TRIES ]]; do
     ./openshift-install agent wait-for install-complete  --dir $CLUSTER_NAME --log-level=debug > "$INSTALL_COMPLETE_LOG_FILE" 2>&1 &
     openshift_install_process_pid=$!
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Started 'openshift-install' process with PID: $openshift_install_process_pid." >> "$LOG_FILE"
@@ -177,7 +177,7 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
         fi
         if [[ $RETRIES -lt $MAX_RETRIES ]]; then
             RETRIES=$((RETRIES + 1))
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Retrying process ($RETRIES/$MAX_RETRIES)..." >> "$LOG_FILE"
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Retrying process ($RETRIES/$MAX_TRIES)..." >> "$LOG_FILE"
         else
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process failed after $MAX_RETRIES attempts." >> "$LOG_FILE"
             exit 1
@@ -188,8 +188,10 @@ done
 ###
 ### Log script completion
 ###
-echo "" >> "$LOG_FILE"
-echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script completed successfully." >> "$LOG_FILE"
+if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
+    echo "" >> "$LOG_FILE"
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script completed successfully." >> "$LOG_FILE"
+fi
 exit 0
 ```
 
