@@ -9,14 +9,10 @@ vi abi-06-wait-for-install-complete.sh
 
 LOG_FILE="$(basename "$0" .sh).log"
 
-### Log file for bootstrap-complete
-BOOTSTRAP_COMPLETE_LOG_FILE="./wait-for_bootstrap-complete.log"
-BOOTSTRAP_SEARCH_STRING="cluster bootstrap is complete"
-
 ### Log file for install-complete
 INSTALL_COMPLETE_LOG_FILE="./wait-for_install-complete.log"
-INSTALL_SEARCH_STRING="Cluster is installed"
-
+INSTALL_COMPLETE_SEARCH_KEYWORD="Cluster is installed"
+NODE_LABEL_TRIGGER_SEARCH_KEYWORD="cluster bootstrap is complete"
 
 MAX_RETRIES=2
 
@@ -65,113 +61,111 @@ trap "rm -f '$PID_FILE'" EXIT
 
 
 ###
-### Log script start
+### Script start
 ###
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script has started successfully." > "$LOG_FILE"
 
+INSTALL_COMPLETE_STATUS=""
+RETRIES=0
+while [[ $RETRIES -lt $MAX_RETRIES ]]; do
+    ./openshift-install agent wait-for install-complete  --dir $CLUSTER_NAME --log-level=debug > "$INSTALL_COMPLETE_LOG_FILE" 2>&1 &
+    process_pid=$!
+    sleep 3
 
-### Wait for completion with timeout and retries
-wait_for_completion() {
-    local command=$1
-    local search_string=$2
-    local log_file=$3
-    local process_pid
-    local retries=0
-
-    while [[ $retries -lt $MAX_RETRIES ]]; do
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Starting process: $command..." >> "$LOG_FILE"
-        ./openshift-install agent wait-for $command --dir $CLUSTER_NAME --log-level=debug > "$log_file" 2>&1 &
-        process_pid=$!
-
-        local all_labels_applied=false
-        local start_time=$(date +%s)
+    if [[ -f $INSTALL_COMPLETE_LOG_FILE ]]; then
+        all_labels_applied=false
+        start_time=$(date +%s)
+	node_label_trigger_search_result=""
         while true; do
-            echo -n "." >> "$LOG_FILE"
-            ### install-complete
-            ### Apply node labels if not already applied
-            if [[ "install-complete" == "$command" && "$all_labels_applied" == "false" && -n "$NODE_ROLE_SELECTORS" ]]; then
-                if grep "OpenShift console route is admitted" "$log_file"; then
+            # Apply node labels if not already applied
+            if [[ -n "$NODE_ROLE_SELECTORS" ]]; then
+                if [[ -z $node_label_trigger_search_result ]]; then
+                    node_label_trigger_search_result=$(grep "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE")
+                fi
+
+                if [[ -n $node_label_trigger_search_result && $all_labels_applied = "false" ]]; then
                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
-                    echo "$NODE_ROLE_SELECTORS" >> $LOG_FILE
-                    all_labels_applied=true
+                    all_labels_applied=true  # Assume success initially
+
                     for node_role_selector in $NODE_ROLE_SELECTORS; do
                         node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
                         node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
-                        echo "$node_role" >> $LOG_FILE
-                        echo "$node_prefix" >> $LOG_FILE
-                        for node in $(oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}"); do
-                            current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
-                            if [[ -z "$current_label" ]]; then
-                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
-                                oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
-                                sleep 2
-                                current_label=$(oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=" || true)
+                        nodes=$(timeout 3s oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}")
+                        if [[ -n $nodes ]]; then
+                            for node in $nodes; do
+                                current_label=$(timeout 3s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=")
+
                                 if [[ -z "$current_label" ]]; then
-                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Failed to label node: $node with role: $node_role" >> $LOG_FILE
-                                    all_labels_applied=false  # Mark as false if labeling fails
+                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
+
+                                    # Try to apply label with timeout
+                                    if ! timeout 3s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
+                                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
+                                        all_labels_applied=false  # Mark as false if any labeling fails
+                                        break
+                                    fi
+
+                                    sleep 2
+                                    current_label=$(timeout 3s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=")
+                                    if [[ -z "$current_label" ]]; then
+                                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Verification failed for node: $node, role: $node_role" >> $LOG_FILE
+                                        all_labels_applied=false
+                                        break
+                                    fi
+                                else
+                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
                                 fi
-                            else
-                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
-                            fi
-                        done
+                            done
+                        else
+                            all_labels_applied=false
+                        fi
                     done
+
+                    if [[ "$all_labels_applied" == "true" ]]; then
+                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] All labels successfully applied." >> $LOG_FILE
+                    fi
+                else
+                    if [[ -z $node_label_trigger_search_result ]]; then
+                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] No trigger string found in log file. Skipping label application." >> $LOG_FILE
+                    fi
                 fi
             fi
 
-            if grep "$search_string" "$log_file"; then
-                echo "" >> "$LOG_FILE"
-                if [[ -d "/proc/$process_pid" ]]; then
-                    if kill -9 "$process_pid" 2>/dev/null; then
-                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid terminated." >> "$LOG_FILE"
-                    else
-                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Failed to terminate process $process_pid" >> "$LOG_FILE"
-                    fi
-                fi
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process($command) completed successfully." >> "$LOG_FILE"
-                return 0
+            if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
+                INSTALL_COMPLETE_STATUS="SUCCESS"
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
+                break
             else
                 if [[ ! -d "/proc/$process_pid" ]]; then
-                    echo "" >> "$LOG_FILE"
                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid is no longer running." >> "$LOG_FILE"
                     break
                 fi
             fi
 
             if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
-                echo "" >> "$LOG_FILE"
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command '$command' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command 'install-complete' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
                 if [[ -d "/proc/$process_pid" ]]; then
-                    if kill -9 "$process_pid" 2>/dev/null; then
-                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid terminated." >> "$LOG_FILE"
-                    else
-                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Failed to terminate process $process_pid" >> "$LOG_FILE"
-                    fi
+                    kill -9 "$process_pid"
+                    break
                 fi
-                exit 1
             fi
-
-            sleep 1
+            sleep 3
         done
+    fi
 
-        retries=$((retries + 1))
-        echo "" >> "$LOG_FILE"
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Retrying process ($retries/$MAX_RETRIES)..." >> "$LOG_FILE"
-    done
-
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process($command) failed after $MAX_RETRIES attempts." >> "$LOG_FILE"
-    exit 1
-}
-
-###
-### bootstrap-complete process
-###
-wait_for_completion "bootstrap-complete" "$BOOTSTRAP_SEARCH_STRING" "$BOOTSTRAP_COMPLETE_LOG_FILE"
-
-###
-### install-complete process
-###
-wait_for_completion "install-complete" "$INSTALL_SEARCH_STRING" "$INSTALL_COMPLETE_LOG_FILE"
-
+    RETRIES=$((RETRIES + 1))
+    if [[ "SUCCESS" = "$INSTALL_COMPLETE_STATUS" ]]; then
+        break
+    else
+        RETRIES=$((RETRIES + 1))
+        if [[ $RETRIES -lt $MAX_RETRIES ]]; then
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Retrying process ($RETRIES/$MAX_RETRIES)..." >> "$LOG_FILE"
+        else
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process failed after $MAX_RETRIES attempts." >> "$LOG_FILE"
+            exit 1
+       fi
+    fi
+done
 
 ###
 ### Log script completion
