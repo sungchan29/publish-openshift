@@ -51,7 +51,7 @@ if [[ -f "$PID_FILE" ]]; then
     if [[ ! "$pid" =~ ^[0-9]+$ ]] || [[ ! -d "/proc/$pid" ]]; then
         rm -f "$PID_FILE"
     else
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script is already running with PID $pid. Exiting..." >> "$LOG_FILE"
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script is already running with PID $pid. Exiting..." >> "$LOG_FILE"
         exit 1
     fi
 fi
@@ -64,14 +64,14 @@ trap "rm -f '$PID_FILE'" EXIT
 ###
 ### Script start
 ###
-echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script has started successfully." > "$LOG_FILE"
+echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script has started successfully." > "$LOG_FILE"
 
 INSTALL_COMPLETE_STATUS=""
 RETRIES=0
 while [[ $RETRIES -lt $MAX_RETRIES ]]; do
     ./openshift-install agent wait-for install-complete  --dir $CLUSTER_NAME --log-level=debug > "$INSTALL_COMPLETE_LOG_FILE" 2>&1 &
     openshift_install_process_pid=$!
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Started 'openshift-install' process with PID: $openshift_install_process_pid." >> "$LOG_FILE"
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Started 'openshift-install' process with PID: $openshift_install_process_pid." >> "$LOG_FILE"
     sleep 3
 
     all_labels_applied=false
@@ -84,7 +84,7 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
                 node_label_trigger_search_result=$(grep "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE" || true)
             fi
             if [[ -n $node_label_trigger_search_result && $all_labels_applied = "false" ]]; then
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Applying node labels..." >> $LOG_FILE
                 all_labels_applied=true  # Assume success initially
                 for node_role_selector in $NODE_ROLE_SELECTORS; do
                     if [[ ! "$node_role_selector" =~ ^[a-zA-Z0-9_\-]+--[a-zA-Z0-9_\-]+$ ]]; then
@@ -96,9 +96,9 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
                     nodes="$(timeout 10s oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}")"
                     if [[ -n $nodes ]]; then
                         for node in $nodes; do
-                            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Checking labels for node: $node" >> "$LOG_FILE"
+                            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Checking labels for node: $node" >> "$LOG_FILE"
                             if [[ -z $(timeout 10s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
-                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Labeling node: $node with role: $node_role" >> $LOG_FILE
                                 # Try to apply label with timeout
                                 if ! timeout 10s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
                                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
@@ -112,7 +112,7 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
                                     continue
                                 fi
                             else
-                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
                             fi
                         done
                     else
@@ -121,11 +121,11 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
                 done
 
                 if [[ "$all_labels_applied" == "true" ]]; then
-                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] All labels successfully applied." >> $LOG_FILE
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: All labels successfully applied." >> $LOG_FILE
                 fi
             else
                 if [[ -z $node_label_trigger_search_result ]]; then
-                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] No trigger string found in log file. Skipping label application." >> $LOG_FILE
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: No trigger string found in log file. Skipping label application." >> $LOG_FILE
                 fi
             fi
         fi
@@ -134,13 +134,13 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
         if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
             INSTALL_COMPLETE_STATUS="SUCCESS"
             echo "" >> "$LOG_FILE"
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process completed successfully." >> "$LOG_FILE"
             break
         fi
 
         if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
             echo "" >> "$LOG_FILE"
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
             break
         fi
 
@@ -169,13 +169,13 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
     else
         if [[ -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
             if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process completed successfully." >> "$LOG_FILE"
                 break
             fi
         fi
         RETRIES=$((RETRIES + 1))
         if [[ $RETRIES -lt $MAX_RETRIES ]]; then
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Retrying process ($RETRIES/$MAX_RETRIES)..." >> "$LOG_FILE"
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Retrying process ($RETRIES/$MAX_RETRIES)..." >> "$LOG_FILE"
         else
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process failed after $MAX_RETRIES attempts." >> "$LOG_FILE"
             exit 1
@@ -187,7 +187,7 @@ done
 ### Log script completion
 ###
 echo "" >> "$LOG_FILE"
-echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script completed successfully." >> "$LOG_FILE"
+echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script completed successfully." >> "$LOG_FILE"
 exit 0
 ```
 
