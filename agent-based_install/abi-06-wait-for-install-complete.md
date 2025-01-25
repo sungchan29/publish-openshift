@@ -17,7 +17,8 @@ NODE_LABEL_TRIGGER_SEARCH_KEYWORD="cluster bootstrap is complete"
 MAX_RETRIES=2
 
 ### Timeout for OpenShift commands
-TIMEOUT=7200  # 120 minutes (in seconds)
+#TIMEOUT=7200  # 120 minutes (in seconds)
+TIMEOUT=1700  #(in seconds)
 
 
 # Source the configuration file
@@ -144,7 +145,6 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
         sleep 5
     done
 
-    RETRIES=$((RETRIES + 1))
     if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
         break
     else
@@ -154,6 +154,7 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
                 break
             fi
         fi
+        RETRIES=$((RETRIES + 1))
         if [[ $RETRIES -lt $MAX_RETRIES ]]; then
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] Retrying process ($RETRIES/$MAX_RETRIES)..." >> "$LOG_FILE"
         else
@@ -170,6 +171,7 @@ done
 ###
 ### Log script completion
 ###
+echo "" >> "$LOG_FILE"
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Script completed successfully." >> "$LOG_FILE"
 exit 0
 ```
