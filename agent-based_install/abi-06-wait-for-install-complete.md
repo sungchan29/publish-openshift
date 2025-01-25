@@ -67,8 +67,8 @@ trap "rm -f '$PID_FILE'" EXIT
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script has started successfully." > "$LOG_FILE"
 
 INSTALL_COMPLETE_STATUS=""
-RETRIES=0
-while [[ $RETRIES -le $MAX_TRIES ]]; do
+TRIES=1
+while [[ $TRIES -le $MAX_TRIES ]]; do
     ./openshift-install agent wait-for install-complete  --dir $CLUSTER_NAME --log-level=debug > "$INSTALL_COMPLETE_LOG_FILE" 2>&1 &
     openshift_install_process_pid=$!
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Started 'openshift-install' process with PID: $openshift_install_process_pid." >> "$LOG_FILE"
@@ -175,9 +175,9 @@ while [[ $RETRIES -le $MAX_TRIES ]]; do
             echo "" >> "$LOG_FILE"
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
         fi
-        if [[ $RETRIES -lt $MAX_TRIES ]]; then
-            RETRIES=$((RETRIES + 1))
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Retrying process ($RETRIES/$MAX_TRIES)..." >> "$LOG_FILE"
+        if [[ $TRIES -lt $MAX_TRIES ]]; then
+            TRIES=$((TRIES + 1))
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Trying process ($TRIES/$MAX_TRIES)..." >> "$LOG_FILE"
         else
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process failed after $MAX_TRIES attempts." >> "$LOG_FILE"
             exit 1
