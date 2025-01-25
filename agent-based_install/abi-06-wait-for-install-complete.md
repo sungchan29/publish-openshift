@@ -10,7 +10,7 @@ vi abi-06-wait-for-install-complete.sh
 LOG_FILE="$(basename "$0" .sh).log"
 
 ### Log file for install-complete
-INSTALL_COMPLETE_LOG_FILE="./wait-for_install-complete.log"
+INSTALL_COMPLETE_LOG_FILE=$(realpath "./wait-for_install-complete.log")
 INSTALL_COMPLETE_SEARCH_KEYWORD="Cluster is installed"
 NODE_LABEL_TRIGGER_SEARCH_KEYWORD="cluster bootstrap is complete"
 
@@ -59,7 +59,6 @@ echo $$ > "$PID_FILE"
 # Trap to handle script exit
 trap "rm -f '$PID_FILE'" EXIT
 
-
 ###
 ### Script start
 ###
@@ -72,86 +71,82 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
     process_pid=$!
     sleep 3
 
-    if [[ -f $INSTALL_COMPLETE_LOG_FILE ]]; then
-        all_labels_applied=false
-        start_time=$(date +%s)
-	node_label_trigger_search_result=""
-        while true; do
-            # Apply node labels if not already applied
-            if [[ -n "$NODE_ROLE_SELECTORS" ]]; then
-                if [[ -z $node_label_trigger_search_result ]]; then
-                    node_label_trigger_search_result=$(grep "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE")
-                fi
-
-                if [[ -n $node_label_trigger_search_result && $all_labels_applied = "false" ]]; then
-                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
-                    all_labels_applied=true  # Assume success initially
-
-                    for node_role_selector in $NODE_ROLE_SELECTORS; do
-                        node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
-                        node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
-                        nodes=$(timeout 3s oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}")
-                        if [[ -n $nodes ]]; then
-                            for node in $nodes; do
-                                current_label=$(timeout 3s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=")
-
-                                if [[ -z "$current_label" ]]; then
-                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
-
-                                    # Try to apply label with timeout
-                                    if ! timeout 3s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
-                                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
-                                        all_labels_applied=false  # Mark as false if any labeling fails
-                                        break
-                                    fi
-
-                                    sleep 2
-                                    current_label=$(timeout 3s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=")
-                                    if [[ -z "$current_label" ]]; then
-                                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Verification failed for node: $node, role: $node_role" >> $LOG_FILE
-                                        all_labels_applied=false
-                                        break
-                                    fi
-                                else
-                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
+    all_labels_applied=false
+    start_time=$(date +%s)
+    node_label_trigger_search_result=""
+    while [[ -f "$INSTALL_COMPLETE_LOG_FILE" && -d "/proc/$process_pid" ]]; do
+        # Apply node labels if not already applied
+        if [[ -n "$NODE_ROLE_SELECTORS" ]]; then
+            if [[ -z $node_label_trigger_search_result ]]; then
+                node_label_trigger_search_result=$(grep "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE" || true)
+            fi
+            if [[ -n $node_label_trigger_search_result && $all_labels_applied = "false" ]]; then
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Applying node labels..." >> $LOG_FILE
+                all_labels_applied=true  # Assume success initially
+                for node_role_selector in $NODE_ROLE_SELECTORS; do
+                    if [[ ! "$node_role_selector" =~ ^[a-zA-Z0-9_\-]+--[a-zA-Z0-9_\-]+$ ]]; then
+                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Invalid node role selector format: $node_role_selector. Skipping."
+                        continue
+                    fi
+                    node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
+                    node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
+                    nodes="$(timeout 10s oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}")"
+                    if [[ -n $nodes ]]; then
+                        for node in $nodes; do
+                            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Checking labels for node: $node" >> "$LOG_FILE"
+                            if [[ -z $(timeout 10s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Labeling node: $node with role: $node_role" >> $LOG_FILE
+                                # Try to apply label with timeout
+                                if ! timeout 10s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
+                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
+                                    all_labels_applied=false  # Mark as false if any labeling fails
+                                    continue
                                 fi
-                            done
-                        else
-                            all_labels_applied=false
-                        fi
-                    done
+                                sleep 2
+                                if [[ -z $(timeout 10s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
+                                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Verification failed for node: $node, role: $node_role" >> $LOG_FILE
+                                    all_labels_applied=false
+                                    continue
+                                fi
+                            else
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
+                            fi
+                        done
+                    else
+                        all_labels_applied=false
+                    fi
+                done
 
-                    if [[ "$all_labels_applied" == "true" ]]; then
-                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] All labels successfully applied." >> $LOG_FILE
-                    fi
-                else
-                    if [[ -z $node_label_trigger_search_result ]]; then
-                        echo "[$(date +"%Y-%m-%d %H:%M:%S")] No trigger string found in log file. Skipping label application." >> $LOG_FILE
-                    fi
+                if [[ "$all_labels_applied" == "true" ]]; then
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] All labels successfully applied." >> $LOG_FILE
                 fi
-            fi
-
-            if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
-                INSTALL_COMPLETE_STATUS="SUCCESS"
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
-                break
             else
-                if [[ ! -d "/proc/$process_pid" ]]; then
-                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid is no longer running." >> "$LOG_FILE"
-                    break
+                if [[ -z $node_label_trigger_search_result ]]; then
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] No trigger string found in log file. Skipping label application." >> $LOG_FILE
                 fi
             fi
-
-            if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command 'install-complete' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
-                if [[ -d "/proc/$process_pid" ]]; then
-                    kill -9 "$process_pid"
-                    break
-                fi
+        fi
+        if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
+            INSTALL_COMPLETE_STATUS="SUCCESS"
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
+            break
+        else
+            if [[ ! -d "/proc/$process_pid" ]]; then
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $process_pid is no longer running." >> "$LOG_FILE"
+                break
             fi
-            sleep 3
-        done
-    fi
+        fi
+        if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command 'install-complete' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
+            kill "$process_pid"
+            sleep 1
+            if [[ -d "/proc/$process_pid" ]]; then
+                kill -9 "$process_pid"
+                break
+            fi
+        fi
+        sleep 3
+    done
 
     RETRIES=$((RETRIES + 1))
     if [[ "SUCCESS" = "$INSTALL_COMPLETE_STATUS" ]]; then
