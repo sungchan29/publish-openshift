@@ -157,7 +157,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             break
         fi
         if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" ]]; then
-            echo -n "." >> "$LOG_FILE"
+            echo -n "." >> "$LOG_FILE" 
         fi
         sleep 5
     done
@@ -172,7 +172,9 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             fi
         fi
         if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
-            echo "" >> "$LOG_FILE"
+            if [[ $all_labels_applied = "true" ]]; then
+                echo "" >> "$LOG_FILE"
+            fi
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
         fi
         if [[ $TRIES -lt $MAX_TRIES ]]; then
