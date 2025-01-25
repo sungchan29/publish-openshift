@@ -176,12 +176,12 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
         fi
         if [[ $RETRIES -lt $MAX_RETRIES ]]; then
+            RETRIES=$((RETRIES + 1))
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Retrying process ($RETRIES/$MAX_RETRIES)..." >> "$LOG_FILE"
         else
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process failed after $MAX_RETRIES attempts." >> "$LOG_FILE"
             exit 1
         fi
-        RETRIES=$((RETRIES + 1))
     fi
 done
 
