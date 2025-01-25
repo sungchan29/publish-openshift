@@ -7,6 +7,7 @@ vi abi-06-wait-for-install-complete.sh
 ```bash
 #!/bin/bash
 
+### Define the log file name for the script.
 LOG_FILE="$(basename "$0" .sh).log"
 
 ### Log file for install-complete
@@ -14,14 +15,7 @@ INSTALL_COMPLETE_LOG_FILE=$(realpath "./wait-for_install-complete.log")
 INSTALL_COMPLETE_SEARCH_KEYWORD="Cluster is installed"
 NODE_LABEL_TRIGGER_SEARCH_KEYWORD="cluster bootstrap is complete"
 
-MAX_TRIES=3
-
-### Timeout for OpenShift commands
-#TIMEOUT=7200  # 120 minutes (in seconds)
-TIMEOUT=1200  #(in seconds)
-
-
-# Source the configuration file
+### Source the configuration file
 if [[ -f ./abi-01-config-preparation-01-general.sh ]]; then
     source "./abi-01-config-preparation-01-general.sh"
 else
@@ -42,6 +36,12 @@ else
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Required binaries (openshift-install, oc) not found. Exiting..." > $LOG_FILE
     exit 1
 fi
+
+# Set the default value for MAX_TRIES if it is not already defined.
+MAX_TRIES=${MAX_TRIES:=3}
+
+# Timeout for OpenShift commands
+TIMEOUT=${TIMEOUT:=7200}  # 120 minutes (in seconds)
 
 # PID file
 PID_FILE="./$(basename "$0").$(realpath "$0" | md5sum | cut -d' ' -f1).pid"
