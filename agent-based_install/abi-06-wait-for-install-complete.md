@@ -85,7 +85,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             fi
             if [[ -n $node_label_trigger_search_result && $all_labels_applied = "false" ]]; then
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Applying node labels..." >> $LOG_FILE
-                all_labels_applied=true  # Assume success initially
+                all_labels_applied=true
                 for node_role_selector in $NODE_ROLE_SELECTORS; do
                     if [[ ! "$node_role_selector" =~ ^[a-zA-Z0-9_\-]+--[a-zA-Z0-9_\-]+$ ]]; then
                         echo "[$(date +"%Y-%m-%d %H:%M:%S")] WARNING: Invalid node role selector format: $node_role_selector. Skipping."
@@ -99,10 +99,9 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Checking labels for node: $node" >> "$LOG_FILE"
                             if [[ -z $(timeout 10s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
                                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Labeling node: $node with role: $node_role" >> $LOG_FILE
-                                # Try to apply label with timeout
                                 if ! timeout 10s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
                                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
-                                    all_labels_applied=false  # Mark as false if any labeling fails
+                                    all_labels_applied=false
                                     continue
                                 fi
                                 sleep 2
@@ -130,7 +129,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             fi
         fi
 
-        ###
+        # Check if the process is complete by searching for the completion keyword in the log file.
         if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
             INSTALL_COMPLETE_STATUS="SUCCESS"
             echo "" >> "$LOG_FILE"
@@ -138,10 +137,12 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             break
         fi
 
+        # Verify if the process is still running by checking if the PID exists in the /proc directory.
         if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
             break
         fi
 
+        # Check if the process has exceeded the timeout limit.
         if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
             echo "" >> "$LOG_FILE"
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command 'install-complete' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
@@ -156,6 +157,8 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             fi
             break
         fi
+
+        # Log progress
         if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" ]]; then
             echo -n "." >> "$LOG_FILE" 
         fi
@@ -167,6 +170,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     else
         if [[ -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
             if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
+                echo "" >> "$LOG_FILE"
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process completed successfully." >> "$LOG_FILE"
                 break
             fi
