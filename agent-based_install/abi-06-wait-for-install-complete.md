@@ -157,7 +157,6 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
     if [[ "SUCCESS" = "$INSTALL_COMPLETE_STATUS" ]]; then
         break
     else
-        RETRIES=$((RETRIES + 1))
         if [[ $RETRIES -lt $MAX_RETRIES ]]; then
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] Retrying process ($RETRIES/$MAX_RETRIES)..." >> "$LOG_FILE"
         else
