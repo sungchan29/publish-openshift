@@ -27,10 +27,11 @@ LOCAL_REPOSITORY_NAME="ocp4/openshift"
 #OLM_OPERATORS="redhat--certified--community"
 OLM_OPERATORS="redhat"
 
-###
-### agent-config.yaml
-###
 
+###
+### install-config.yaml
+###   abi-03-create-file-02-install-config.sh
+###
 CLUSTER_NAME="cloudpang"
 BASE_DOMAIN="tistory.disconnected"
 
@@ -48,6 +49,11 @@ BASE_DOMAIN="tistory.disconnected"
 SSH_KEY_01="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG8qJQJbNWHxvHOMOgtA++F2TdtvYEvrBEWPHkvKg+is root@thinkpad"
 SSH_KEY_02="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINw0niln0q4xQVALeSuwjfMvPN4chTNYgHMPVOGgJqfw root@thinkstation"
 
+
+###
+### agent-config.yaml
+###   abi-03-create-file-01-agent-config.sh
+###
 NTP_SERVER_01="11.119.120.28"
 NTP_SERVER_02=""
 
@@ -71,6 +77,10 @@ NODE_INFO_LIST=" \
 #  worker--egress02--enp1s0--52:54:00:7d:e1:25--11.119.120.125--24--0.0.0.0/0--11.119.120.28--254 \
 #"
 
+###
+### MachineConfigPool, Disk Configuration
+###   abi-03-create-file-03-openshift-configs.sh
+###
 ### role--node_prefix
 NODE_ROLE_SELECTORS=" \
 infra--infra \
@@ -101,8 +111,10 @@ ADD_DEVICE_TYPE="PARTITION"
 #     Detault: 0
 ADD_DEVICE_PARTITION_START_MIB=""
 
+
 ###
 ### install-config.yaml
+###   abi-03-create-file-02-install-config.sh
 ###
 
 ### Machine CIDR ranges cannot be changed after creating your cluster.
@@ -121,11 +133,32 @@ CLUSTER_NETWORK_CIDR="10.0.0.0/21"
 #HOST_PREFIX="23"
 HOST_PREFIX="24"
 
-INTERNAL_JOIN_SUBNET="10.1.253.0/23"
-INTERNAL_TRANSIT_SWITCH_SUBNET="10.1.255.0/25"
-INTERNAL_MASQUERADE_SUBNET="10.1.255.128/29"
+###
+### ovnKubernetesConfig
+###   abi-03-create-file-03-openshift-configs.sh
+###
+INTERNAL_JOIN_SUBNET=""
+INTERNAL_TRANSIT_SWITCH_SUBNET=""
+INTERNAL_MASQUERADE_SUBNET=""
 
+###
+### Directory path
+###   abi-01-config-preparation-02-vulnerability-mitigation-text.sh
+###   abi-03-create-file-04-vulnerability-mitigation-configs.sh
+###
+# Define the path for the vulnerability mitigation text file
 VULNERABILITY_MITIGATION_TEXT="./vulnerability-mitigation-text"
+
+###
+### Wait for install complete
+###   abi-06-wait-for-install-complete.sh
+###
+# Set the default value for MAX_TRIES if it is not already defined.
+MAX_TRIES=""  # default: 3
+
+# Timeout for OpenShift commands
+TIMEOUT=""  # default: 7200 (in seconds)
+
 
 #####################
 #####################
