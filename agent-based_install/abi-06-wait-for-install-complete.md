@@ -132,7 +132,6 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
             break
         fi
-        fi
         if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command 'install-complete' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
             kill "$process_pid"
