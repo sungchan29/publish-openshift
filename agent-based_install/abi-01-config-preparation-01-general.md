@@ -11,6 +11,7 @@ vi abi-01-config-preparation-01-general.sh
 
 ```bash
 #!/bin/bash
+
 OCP_VERSION="4.17.9"
 
 DOWNLOAD_DIRECTORY="/root/Downloads/ocp/mirror_workspace/ocp4-install-files-v4.17.9--4.17.10"
