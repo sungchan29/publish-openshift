@@ -57,6 +57,7 @@ if [[ -f "$PID_FILE" ]]; then
 fi
 # Save the current PID to the PID file
 echo $$ > "$PID_FILE"
+echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script PID ($$) saved to $PID_FILE." >> "$LOG_FILE"
 # Trap to handle script exit
 trap "rm -f '$PID_FILE'" EXIT
 
@@ -69,13 +70,14 @@ INSTALL_COMPLETE_STATUS=""
 RETRIES=0
 while [[ $RETRIES -lt $MAX_RETRIES ]]; do
     ./openshift-install agent wait-for install-complete  --dir $CLUSTER_NAME --log-level=debug > "$INSTALL_COMPLETE_LOG_FILE" 2>&1 &
-    process_pid=$!
+    openshift_install_process_pid=$!
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Started 'openshift-install' process with PID: $openshift_install_process_pid." >> "$LOG_FILE"
     sleep 3
 
     all_labels_applied=false
     start_time=$(date +%s)
     node_label_trigger_search_result=""
-    while [[ -f "$INSTALL_COMPLETE_LOG_FILE" && -d "/proc/$process_pid" ]]; do
+    while [[ -f "$INSTALL_COMPLETE_LOG_FILE" && -d "/proc/$openshift_install_process_pid" ]]; do
         # Apply node labels if not already applied
         if [[ -n "$NODE_ROLE_SELECTORS" ]]; then
             if [[ -z $node_label_trigger_search_result ]]; then
@@ -127,19 +129,34 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
                 fi
             fi
         fi
+
+        ###
         if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
             INSTALL_COMPLETE_STATUS="SUCCESS"
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
             break
         fi
+
+        if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
+            break
+        fi
+
         if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command 'install-complete' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
-            kill "$process_pid"
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Attempting to kill the process $openshift_install_process_pid due to timeout." >> "$LOG_FILE"
+            kill "$openshift_install_process_pid"
             sleep 1
-            if [[ -d "/proc/$process_pid" ]]; then
-                kill -9 "$process_pid"
-                break
+            if [[ -d "/proc/$openshift_install_process_pid" ]]; then
+                kill -9 "$openshift_install_process_pid"
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process $openshift_install_process_pid was not terminated by SIGTERM, sending SIGKILL." >> "$LOG_FILE"
+            else
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process $openshift_install_process_pid has already been terminated." >> "$LOG_FILE"
             fi
+            break
+        fi
+        if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" ]]; then
+            echo -n "." >> "$LOG_FILE"
         fi
         sleep 5
     done
@@ -160,10 +177,6 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process failed after $MAX_RETRIES attempts." >> "$LOG_FILE"
             exit 1
        fi
-    fi
-
-    if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" ]]; then
-        echo -n "." >> "$LOG_FILE"
     fi
 done
 
