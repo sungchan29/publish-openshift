@@ -18,7 +18,7 @@ MAX_RETRIES=2
 
 ### Timeout for OpenShift commands
 #TIMEOUT=7200  # 120 minutes (in seconds)
-TIMEOUT=1700  #(in seconds)
+TIMEOUT=1200  #(in seconds)
 
 
 # Source the configuration file
@@ -133,16 +133,19 @@ while [[ $RETRIES -lt $MAX_RETRIES ]]; do
         ###
         if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
             INSTALL_COMPLETE_STATUS="SUCCESS"
+            echo "" >> "$LOG_FILE"
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process completed successfully." >> "$LOG_FILE"
             break
         fi
 
         if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
+            echo "" >> "$LOG_FILE"
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
             break
         fi
 
         if [[ $(( $(date +%s) - start_time )) -ge $TIMEOUT ]]; then
+            echo "" >> "$LOG_FILE"
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Command 'install-complete' timed out after $TIMEOUT seconds." >> "$LOG_FILE"
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Attempting to kill the process $openshift_install_process_pid due to timeout." >> "$LOG_FILE"
             kill "$openshift_install_process_pid"
