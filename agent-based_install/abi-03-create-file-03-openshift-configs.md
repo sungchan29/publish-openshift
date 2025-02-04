@@ -391,7 +391,7 @@ cat << EOF > ./${CLUSTER_NAME}/orig/openshift/cs-${catalog}-operator-index.yml
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: cs-${catalog}-operator
+  name: cs-${catalog}-operator-index
   namespace: openshift-marketplace
 spec:
   image: ${MIRROR_REGISTRY}/olm-${catalog}/redhat/${catalog}-operator-index:v${OCP_VERSION%.*}
