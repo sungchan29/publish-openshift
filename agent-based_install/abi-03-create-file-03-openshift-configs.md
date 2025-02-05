@@ -332,7 +332,7 @@ if [[ -f ${MIRROR_REGISTRY_TRUST_FILE} ]]; then
     else
         MIRROR_REGISTRY_STR="  ${MIRROR_REGISTRY_HOSTNAME}: |"
     fi
-cat << EOF >  ./${CLUSTER_NAME}/orig/openshift/configmap_private-registry-ca.yaml
+cat << EOF >  ./${CLUSTER_NAME}/orig/openshift/configmap_mirror-registry-ca.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
