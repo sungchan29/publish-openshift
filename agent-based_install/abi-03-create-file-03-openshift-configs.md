@@ -370,7 +370,7 @@ spec:
 EOF
 
 
-cat << EOF > ./${CLUSTER_NAME}/orig/openshift/itms-support-tools.yml
+cat << EOF > ./${CLUSTER_NAME}/orig/openshift/itms-support-tools.yaml
 apiVersion: config.openshift.io/v1
 kind: ImageTagMirrorSet
 metadata:
@@ -387,7 +387,7 @@ EOF
 
 ### Config mirror registry
 for catalog in $(echo "$OLM_OPERATORS" | sed 's/--/\n/g'); do
-cat << EOF > ./${CLUSTER_NAME}/orig/openshift/cs-${catalog}-operator-index.yml
+cat << EOF > ./${CLUSTER_NAME}/orig/openshift/cs-${catalog}-operator-index.yaml
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
@@ -422,7 +422,7 @@ EOF
 done
 
 ### Config ingress conroller
-cat << EOF > ./${CLUSTER_NAME}/orig/openshift/ingress-controller.yml
+cat << EOF > ./${CLUSTER_NAME}/orig/openshift/ingress-controller.yaml
 apiVersion: operator.openshift.io/v1
 kind: IngressController
 metadata:
