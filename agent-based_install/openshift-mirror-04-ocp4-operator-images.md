@@ -13,32 +13,6 @@
       https://access.redhat.com/solutions/7032017
 ```
 
-```markdown
-이 세 개의 스크립트는 OpenShift Operator Lifecycle Manager (OLM)에서 선택한 레지스트리 이미지를 특정 환경으로 미러링하는 프로세스를 자동화합니다.
-
-스크립트 설명 및 분석
-  1. 첫 번째 스크립트: openshift-operator-image-mirror-1.sh
-    * 목적: OCP_UPDATE_PATH와 OLM_OPERATORS 변수에 따라 OLM operator 목록을 생성합니다.
-    * 작동 방식:
-      OCP_UPDATE_PATH가 설정되어 있지 않은 경우 파일에서 값을 읽어옵니다.
-      OLM_OPERATORS에서 설정한 운영자 그룹별로 카탈로그 이름을 추출해 각 운영자에 대한 목록을 파일로 저장합니다.
-    * 출력: olm-<catalog>-v<version>.txt 파일을 생성하여 각 카탈로그와 버전별로 운영자 목록을 저장합니다.
-  2. 두 번째 스크립트: openshift-operator-image-mirror-2.sh
-    * 목적: 첫 번째 스크립트의 결과를 바탕으로 ImageSetConfiguration 파일을 생성합니다.
-    * 작동 방식:
-      - 첫 번째 스크립트의 출력 파일을 읽고, 미리 설정된 운영자 필터(예: SELECT_REDHAT_OPERATORS)에 따라 목록을 필터링합니다.
-      - 운영자 목록을 olm-<catalog>-imageset-config.yaml 파일로 작성하여 ImageSetConfiguration 형식에 맞추어 YAML 파일을 생성합니다.
-    * 출력: 필터링된 운영자 목록 파일과 olm-<catalog>-imageset-config.yaml 설정 파일을 생성합니다.
-  3. 세 번째 스크립트: openshift-operator-image-mirror-3.sh
-    * 목적: 생성된 ImageSetConfiguration 파일을 사용해 실제로 이미지를 미러링하고 오류 발생 시 재시도합니다.
-    * 작동 방식:
-      - local_path와 img_tags를 추출해 경로와 태그를 확인하고, 각 경로에 대해 미러링 작업을 시작합니다.
-      - 최대 7회 oc-mirror 명령을 실행하여 미러링을 시도합니다.
-      - 4회 실패 후에는 --continue-on-error를 추가하여 실행합니다.
-      - 성공 시 로그에 결과를 기록하고 파일을 이동합니다.
-    * 출력: 미러링 작업의 성공 및 실패 로그와 미러링된 파일을 지정된 경로에 저장합니다.
-```
-
 ### 1.레지스트리 로그인 설정
 
 ```bash
