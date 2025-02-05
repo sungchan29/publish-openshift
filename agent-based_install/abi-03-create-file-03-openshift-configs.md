@@ -429,6 +429,15 @@ metadata:
   name: default
   namespace: openshift-ingress-operator
 spec:
+EOF
+if [[ -f $INGRESS_CUSTOM_TLS_CERT && -f $INGRESS_CUSTOM_TLS_KEY ]]; then
+cat << EOF >> ./${CLUSTER_NAME}/orig/openshift/ingress-controller.yaml
+  defaultCertificate:
+    name: custom-certs-default
+EOF
+fi
+cat << EOF >> ./${CLUSTER_NAME}/orig/openshift/ingress-controller.yaml
+  replicas: ${INGRESS_REPLICAS}
   nodePlacement:
     nodeSelector:
       matchLabels:

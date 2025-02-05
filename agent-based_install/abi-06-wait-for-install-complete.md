@@ -84,6 +84,9 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                 node_label_trigger_search_result=$(grep "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE" || true)
             fi
             if [[ -n $node_label_trigger_search_result && $all_labels_applied = "false" ]]; then
+                if [[ -f $INGRESS_CUSTOM_TLS_CERT && -f $INGRESS_CUSTOM_TLS_KEY ]]; then
+                    oc --namespace openshift-ingress create secret tls custom-certs-default --cert=${INGRESS_CUSTOM_TLS_CERT} --key=${INGRESS_CUSTOM_TLS_KEY}
+                fi
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Applying node labels..." >> $LOG_FILE
                 all_labels_applied=true
                 for node_role_selector in $NODE_ROLE_SELECTORS; do

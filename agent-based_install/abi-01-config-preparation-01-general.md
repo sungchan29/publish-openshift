@@ -89,6 +89,9 @@ infra--infra \
 
 #INGRESS_NODE_SELECTOR_MATCH_LABEL_KEY="node-role.kubernetes.io/infra"
 INGRESS_NODE_SELECTOR_MATCH_LABEL_KEY="node-role.kubernetes.io/worker"
+INGRESS_REPLICAS=1
+INGRESS_CUSTOM_KEY="/root/sungchan-desk/ingress-certificate/apps.cloudpang.tistory.disconnected/key-apps.pem"
+INGRESS_CUSTOM_CERT="/root/sungchan-desk/ingress-certificate/apps.cloudpang.tistory.disconnected/cert-apps.pem"
 
 ###
 ### Mounting separate disk for OpenShift 4 container storage
