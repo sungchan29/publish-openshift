@@ -130,22 +130,33 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             fi
         fi
 
-        # 수정 해야 함
         if [[ $all_labels_applied = "true" && $custom_ca_applied = "false" ]]; then
-                        oc create configmap ${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA} \
-                            --from-file=ca-bundle.crt=${INGRESS_CUSTOM_ROOT_CA} \
-                            -n openshift-config    
-                    
-                        oc patch proxy/cluster --type=merge \
-                            --patch='{"spec":{"trustedCA":{"name":"${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA}"}}}'
-                    
-                        oc create secret tls ${SECRET_INGRESS_CUSTOM_TLS} \
-                            --cert=${INGRESS_CUSTOM_TLS_CERT} --key=${INGRESS_CUSTOM_TLS_KEY} \
-                            -n openshift-ingress
-                    
-                        oc patch ingresscontroller.operator default --type=merge \
-                            -p '{"spec":{"defaultCertificate": {"name": "${SECRET_INGRESS_CUSTOM_TLS}"}}}' \
-                            -n openshift-ingress-operator
+            custom_ca_applied="true"
+            if [[ -z $(timeout 10s oc get configmap ${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA}) ]]; then
+                oc create configmap ${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA} \
+                    --from-file=ca-bundle.crt=${INGRESS_CUSTOM_ROOT_CA} \
+                    -n openshift-config
+                sleep 1
+                if [[ -n $(timeout 10s oc get configmap ${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA}) ]]; then
+                    oc patch proxy/cluster --type=merge \
+                        --patch='{"spec":{"trustedCA":{"name":"${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA}"}}}'
+                else
+                    custom_ca_applied="false"
+                fi
+            fi
+            if [[ -z $(timeout 10s oc get secret ${SECRET_INGRESS_CUSTOM_TLS}) ]]; then
+                oc create secret tls ${SECRET_INGRESS_CUSTOM_TLS} \
+                    --cert=${INGRESS_CUSTOM_TLS_CERT} --key=${INGRESS_CUSTOM_TLS_KEY} \
+                    -n openshift-ingress
+                sleep 1
+                if [[ -n $(timeout 10s oc get secret ${SECRET_INGRESS_CUSTOM_TLS}) ]]; then
+                    oc patch ingresscontroller.operator default --type=merge \
+                        -p '{"spec":{"defaultCertificate": {"name": "${SECRET_INGRESS_CUSTOM_TLS}"}}}' \
+                        -n openshift-ingress-operator
+                else
+                    custom_ca_applied="false"
+                fi
+            fi
         fi
 
         # Check if the process is complete by searching for the completion keyword in the log file.
