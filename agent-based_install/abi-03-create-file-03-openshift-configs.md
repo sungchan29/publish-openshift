@@ -421,7 +421,28 @@ spec:
 EOF
 done
 
+
 ### Config ingress conroller
+
+if [[ -f $INGRESS_CUSTOM_TLS_CERT && -f $INGRESS_CUSTOM_TLS_KEY ]]; then
+    INGRESS_CUSTOM_TLS_CERT_BASE64=$(base64 < "${INGRESS_CUSTOM_TLS_CERT}" | tr -d '\n')
+    INGRESS_CUSTOM_TLS_KEY_BASE64=$( base64 < "${INGRESS_CUSTOM_TLS_KEY}"  | tr -d '\n')
+
+cat << EOF > ./${CLUSTER_NAME}/orig/openshift/ingress-controller-custom-certs-default-secret.yaml
+apiVersion: v1
+data:
+  tls.crt: ${INGRESS_CUSTOM_TLS_CERT_BASE64}
+  tls.key: ${INGRESS_CUSTOM_TLS_KEY_BASE64}
+kind: Secret
+metadata:
+  name: custom-certs-default
+  namespace: openshift-ingress
+type: kubernetes.io/tls
+EOF
+
+fi
+
+
 cat << EOF > ./${CLUSTER_NAME}/orig/openshift/ingress-controller.yaml
 apiVersion: operator.openshift.io/v1
 kind: IngressController
