@@ -134,7 +134,6 @@ fi
 if [[ -f ${MIRROR_REGISTRY_TRUST_FILE} ]]; then
 cat << EOF >> ./${CLUSTER_NAME}/orig/install-config.yaml
 additionalTrustBundle: |
-cat << EOF >> ./${CLUSTER_NAME}/orig/install-config.yaml
 $(xargs -d '\n' -I {} echo "  {}" < "${MIRROR_REGISTRY_TRUST_FILE}")
 imageDigestSources:
 - source: quay.io/openshift-release-dev/ocp-release
