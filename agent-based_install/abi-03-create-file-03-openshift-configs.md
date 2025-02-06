@@ -402,7 +402,7 @@ spec:
 EOF
 done
 
-### Create MachineConfigPool
+### Create MachineConfigPool(수정 해야 함. acm일때 matchExpression으로 처리 하기로 약속 함)
 for node_role_selector in ${NODE_ROLE_SELECTORS}; do
     node_role=$(          echo ${node_role_selector} |awk -F "--" '{print  $1}' )
     node_name_selector=$( echo ${node_role_selector} |awk -F "--" '{print  $1}' )
@@ -423,26 +423,6 @@ done
 
 
 ### Config ingress conroller
-
-if [[ -f $INGRESS_CUSTOM_TLS_CERT && -f $INGRESS_CUSTOM_TLS_KEY ]]; then
-    INGRESS_CUSTOM_TLS_CERT_BASE64=$(base64 < "${INGRESS_CUSTOM_TLS_CERT}" | tr -d '\n')
-    INGRESS_CUSTOM_TLS_KEY_BASE64=$( base64 < "${INGRESS_CUSTOM_TLS_KEY}"  | tr -d '\n')
-
-cat << EOF > ./${CLUSTER_NAME}/orig/openshift/ingress-controller-custom-certs-default-secret.yaml
-apiVersion: v1
-data:
-  tls.crt: ${INGRESS_CUSTOM_TLS_CERT_BASE64}
-  tls.key: ${INGRESS_CUSTOM_TLS_KEY_BASE64}
-kind: Secret
-metadata:
-  name: custom-certs-default
-  namespace: openshift-ingress
-type: kubernetes.io/tls
-EOF
-
-fi
-
-
 cat << EOF > ./${CLUSTER_NAME}/orig/openshift/ingress-controller.yaml
 apiVersion: operator.openshift.io/v1
 kind: IngressController
@@ -450,14 +430,6 @@ metadata:
   name: default
   namespace: openshift-ingress-operator
 spec:
-EOF
-if [[ -f $INGRESS_CUSTOM_TLS_CERT && -f $INGRESS_CUSTOM_TLS_KEY ]]; then
-cat << EOF >> ./${CLUSTER_NAME}/orig/openshift/ingress-controller.yaml
-  defaultCertificate:
-    name: custom-certs-default
-EOF
-fi
-cat << EOF >> ./${CLUSTER_NAME}/orig/openshift/ingress-controller.yaml
   replicas: ${INGRESS_REPLICAS}
   nodePlacement:
     nodeSelector:

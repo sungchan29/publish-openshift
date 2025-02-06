@@ -75,6 +75,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     sleep 3
 
     all_labels_applied=false
+    custom_ca_applied=false
     start_time=$(date +%s)
     node_label_trigger_search_result=""
     while [[ -f "$INSTALL_COMPLETE_LOG_FILE" && -d "/proc/$openshift_install_process_pid" ]]; do
@@ -119,7 +120,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     fi
                 done
 
-                if [[ "$all_labels_applied" == "true" ]]; then
+                if [[ $all_labels_applied = "true" ]]; then
                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: All labels successfully applied." >> $LOG_FILE
                 fi
             else
@@ -127,6 +128,23 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: No trigger string found in log file. Skipping node labeling." >> $LOG_FILE
                 fi
             fi
+        fi
+
+        if [[ $all_labels_applied = "true" && $custom_ca_applied = "false" ]]; then
+                        oc create configmap ${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA} \
+                            --from-file=ca-bundle.crt=${INGRESS_CUSTOM_ROOT_CA} \
+                            -n openshift-config    
+                    
+                        oc patch proxy/cluster --type=merge \
+                            --patch='{"spec":{"trustedCA":{"name":"${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA}"}}}'
+                    
+                        oc create secret tls ${SECRET_INGRESS_CUSTOM_TLS} \
+                            --cert=${INGRESS_CUSTOM_TLS_CERT} --key=${INGRESS_CUSTOM_TLS_KEY} \
+                            -n openshift-ingress
+                    
+                        oc patch ingresscontroller.operator default --type=merge \
+                            -p '{"spec":{"defaultCertificate": {"name": "${SECRET_INGRESS_CUSTOM_TLS}"}}}' \
+                            -n openshift-ingress-operator
         fi
 
         # Check if the process is complete by searching for the completion keyword in the log file.
@@ -159,7 +177,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         fi
 
         # Log progress
-        if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" ]]; then
+        if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" || $custom_ca_applied = "true" ]]; then
             echo -n "." >> "$LOG_FILE" 
         fi
         sleep 5

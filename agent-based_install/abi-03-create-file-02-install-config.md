@@ -131,21 +131,11 @@ EOF
 
 fi
 
-if [[ -f ${MIRROR_REGISTRY_TRUST_FILE} || -f ${INGRESS_CUSTOM_ROOT_CA} ]]; then
+if [[ -f ${MIRROR_REGISTRY_TRUST_FILE} ]]; then
 cat << EOF >> ./${CLUSTER_NAME}/orig/install-config.yaml
 additionalTrustBundle: |
-EOF
-    if [[ -f ${MIRROR_REGISTRY_TRUST_FILE} ]]; then
 cat << EOF >> ./${CLUSTER_NAME}/orig/install-config.yaml
 $(xargs -d '\n' -I {} echo "  {}" < "${MIRROR_REGISTRY_TRUST_FILE}")
-EOF
-    fi
-    if [[ -f ${INGRESS_CUSTOM_ROOT_CA} ]]; then
-cat << EOF >> ./${CLUSTER_NAME}/orig/install-config.yaml
-$(xargs -d '\n' -I {} echo "  {}" < "${INGRESS_CUSTOM_ROOT_CA}")
-EOF
-    fi
-cat << EOF >> ./${CLUSTER_NAME}/orig/install-config.yaml
 imageDigestSources:
 - source: quay.io/openshift-release-dev/ocp-release
   mirrors:
