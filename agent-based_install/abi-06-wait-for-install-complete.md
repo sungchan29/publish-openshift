@@ -130,6 +130,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             fi
         fi
 
+        # 수정 해야 함
         if [[ $all_labels_applied = "true" && $custom_ca_applied = "false" ]]; then
                         oc create configmap ${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA} \
                             --from-file=ca-bundle.crt=${INGRESS_CUSTOM_ROOT_CA} \
