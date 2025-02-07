@@ -245,7 +245,7 @@ if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Patching the Ingress Controller with the new TLS certificate..." >> "$LOG_FILE"
 
         oc patch ingresscontroller.operator default --type=merge \
-            -p "{\"spec\":{\"defaultCertificate\":{\"name\":\"${SECRET_INGRESS_CUSTOM_TLS}\"}}}"
+            -p "{\"spec\":{\"defaultCertificate\":{\"name\":\"${SECRET_INGRESS_CUSTOM_TLS}\"}}}" \
             -n openshift-ingress-operator
 
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Ingress Controller patched successfully." >> "$LOG_FILE"
