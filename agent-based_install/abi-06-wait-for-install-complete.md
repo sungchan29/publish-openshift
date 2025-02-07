@@ -138,7 +138,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
             INSTALL_COMPLETE_STATUS="SUCCESS"
             echo "" >> "$LOG_FILE"
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process completed successfully." >> "$LOG_FILE"
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Cluster is installed." >> "$LOG_FILE"
             break
         fi
 
@@ -183,7 +183,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
                 INSTALL_COMPLETE_STATUS="SUCCESS"
                 echo "" >> "$LOG_FILE"
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process completed successfully." >> "$LOG_FILE"
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Cluster is installed." >> "$LOG_FILE"
                 break
             fi
         fi
@@ -260,6 +260,7 @@ if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
     else
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Skipping TLS configuration due to missing required variables." >> "$LOG_FILE"
     fi
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process completed successfully." >> "$LOG_FILE"
 fi
 ```
 
