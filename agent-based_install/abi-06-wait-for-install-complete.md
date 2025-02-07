@@ -85,11 +85,11 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     node_label_trigger_search_result=""
     while [[ -f "$INSTALL_COMPLETE_LOG_FILE" && -d "/proc/$openshift_install_process_pid" ]]; do
         # Apply node labels if not already applied
-        if [[ -n "$NODE_ROLE_SELECTORS" ]]; then
+        if [[ -n "$NODE_ROLE_SELECTORS" && $all_labels_applied = "false" ]]; then
             if [[ -z $node_label_trigger_search_result ]]; then
                 node_label_trigger_search_result=$(grep "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE" || true)
             fi
-            if [[ -n $node_label_trigger_search_result && $all_labels_applied = "false" ]]; then
+            if [[ -n $node_label_trigger_search_result ]]; then
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Applying node labels..." >> $LOG_FILE
                 all_labels_applied=true
                 for node_role_selector in $NODE_ROLE_SELECTORS; do
