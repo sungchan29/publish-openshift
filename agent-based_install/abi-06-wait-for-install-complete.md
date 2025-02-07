@@ -80,7 +80,6 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     sleep 3
 
     all_labels_applied=false
-    custom_ca_applied=false
     start_time=$(date +%s)
     node_label_trigger_search_result=""
     while [[ -f "$INSTALL_COMPLETE_LOG_FILE" && -d "/proc/$openshift_install_process_pid" ]]; do
@@ -165,7 +164,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         fi
 
         # Log progress
-        if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" || $custom_ca_applied = "true" ]]; then
+        if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" ]]; then
             echo -n "." >> "$LOG_FILE" 
         fi
         sleep 5
@@ -174,6 +173,12 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
         break
     else
+        if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
+            if [[ $all_labels_applied = "true" ]]; then
+                echo "" >> "$LOG_FILE"
+            fi
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
+        fi
         if [[ -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
             if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
                 INSTALL_COMPLETE_STATUS="SUCCESS"
@@ -182,18 +187,11 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                 break
             fi
         fi
-        if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
-            if [[ $all_labels_applied = "true" ]]; then
-                echo "" >> "$LOG_FILE"
-            fi
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
-        fi
         if [[ $TRIES -lt $MAX_TRIES ]]; then
             TRIES=$((TRIES + 1))
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Trying process ($TRIES/$MAX_TRIES)..." >> "$LOG_FILE"
         else
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process failed after $MAX_TRIES attempts." >> "$LOG_FILE"
-            exit 1
         fi
     fi
 done
@@ -262,10 +260,7 @@ if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
     else
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Skipping TLS configuration due to missing required variables." >> "$LOG_FILE"
     fi
-
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script completed successfully." >> "$LOG_FILE"
 fi
-exit 0
 ```
 
 
