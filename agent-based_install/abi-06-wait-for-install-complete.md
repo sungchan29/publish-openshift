@@ -248,6 +248,11 @@ if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
     else
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Skipping TLS configuration due to missing required variables." >> "$LOG_FILE"
     fi
+    echo ""
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Monitoring OpenShift components to ensure a stable state after applying custom TLS configuration..." >> "$LOG_FILE"
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Watching MachineConfigPool (MCP) and ClusterOperators (CO) status. Ensure all components return to a stable state." >> "$LOG_FILE"
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: "watch -n 3 timeout 3s oc get mcp,co"" >> "$LOG_FILE"
+    echo ""
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process completed successfully." >> "$LOG_FILE"
 fi
 ```
