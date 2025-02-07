@@ -73,6 +73,9 @@ echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script has started successfully." > "
 
 INSTALL_COMPLETE_STATUS=""
 TRIES=1
+if [[ -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
+    rm -f "$INSTALL_COMPLETE_LOG_FILE"
+fi
 while [[ $TRIES -le $MAX_TRIES ]]; do
     ./openshift-install agent wait-for install-complete  --dir $CLUSTER_NAME --log-level=debug > "$INSTALL_COMPLETE_LOG_FILE" 2>&1 &
     openshift_install_process_pid=$!
