@@ -167,6 +167,7 @@ MAX_TRIES=""  # default: 3
 TIMEOUT=""  # default: 7200 seconds
 
 ### Log file for install-complete
+INSTALL_COMPLETE_LOG_FILE=""          #./wait-for_install-complete.log"
 NODE_LABEL_TRIGGER_SEARCH_KEYWORD=""  # default: "cluster bootstrap is complete"
 INSTALL_COMPLETE_SEARCH_KEYWORD=""    # default: "Cluster is installed"
 
