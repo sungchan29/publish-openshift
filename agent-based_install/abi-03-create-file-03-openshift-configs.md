@@ -402,7 +402,7 @@ spec:
 EOF
 done
 
-### Create MachineConfigPool(수정 해야 함. acm일때 matchExpression으로 처리 하기로 약속 함)
+### Create MachineConfigPool
 for node_role_selector in ${NODE_ROLE_SELECTORS}; do
     node_role=$(          echo ${node_role_selector} |awk -F "--" '{print  $1}' )
     node_name_selector=$( echo ${node_role_selector} |awk -F "--" '{print  $1}' )
@@ -419,8 +419,28 @@ spec:
     matchLabels:
       node-role.kubernetes.io/${node_role}: ""
 EOF
+#  nodeSelector:
+#    matchExpressions:
+#    - key: node-role.kubernetes.io/acm
+#      operator: Exists
+#    - key: node-role.kubernetes.io/infra
+#      operator: DoesNotExist
+#EOF
 done
 
+### dns operator toleration
+#cat << EOF > ./${CLUSTER_NAME}/orig/openshift/dns-operator.yml
+#apiVersion: operator.openshift.io/v1
+#kind: DNS
+#metadata:
+#  name: default
+#spec:
+#  nodePlacement:
+#    tolerations:
+#    - effect: NoSchedule
+#      operator: Exists
+#      key: node-role.kubernetes.io/infra
+#EOF
 
 ### Config ingress conroller
 cat << EOF > ./${CLUSTER_NAME}/orig/openshift/ingress-controller.yaml

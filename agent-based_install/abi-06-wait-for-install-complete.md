@@ -203,7 +203,7 @@ done
 if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
     echo "" >> "$LOG_FILE"
 
-    if [[ -n $CONFIGMAP_INGRESS_CUSTOM_ROOT_CA && -n $INGRESS_CUSTOM_TLS_KEY && -n $INGRESS_CUSTOM_TLS_CERT ]]; then
+    if [[ -n $INGRESS_CUSTOM_ROOT_CA && -n $INGRESS_CUSTOM_TLS_KEY && -n $INGRESS_CUSTOM_TLS_CERT ]]; then
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Starting Ingress TLS and Custom CA Configuration..." >> "$LOG_FILE"
 
         ### Create a config map that includes only the root CA certificate used to sign the wildcard certificate
