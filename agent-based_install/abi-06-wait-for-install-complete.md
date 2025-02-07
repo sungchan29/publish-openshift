@@ -85,10 +85,10 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     while [[ -f "$INSTALL_COMPLETE_LOG_FILE" && -d "/proc/$openshift_install_process_pid" ]]; do
         # Apply node labels if not already applied
         if [[ -n "$NODE_ROLE_SELECTORS" && $all_labels_applied = "false" ]]; then
-            if [[ -z $node_label_trigger_search_result ]]; then
+            if [[ -z "$node_label_trigger_search_result" ]]; then
                 node_label_trigger_search_result=$(grep "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE" || true)
             fi
-            if [[ -n $node_label_trigger_search_result ]]; then
+            if [[ -n "$node_label_trigger_search_result" ]]; then
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Applying node labels..." >> $LOG_FILE
                 all_labels_applied=true
                 for node_role_selector in $NODE_ROLE_SELECTORS; do
@@ -99,7 +99,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
                     node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
                     nodes="$(timeout 3s oc get nodes --no-headers -o custom-columns=":metadata.name" 2>/dev/null | grep "${node_prefix}")"
-                    if [[ -n $nodes ]]; then
+                    if [[ -n "$nodes" ]]; then
                         for node in $nodes; do
                             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Checking labels for node: $node" >> "$LOG_FILE"
                             if [[ -z $(timeout 3s oc get node "$node" --show-labels 2>/dev/null  | grep "node-role.kubernetes.io/${node_role}=") ]]; then
@@ -107,7 +107,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
 
                                 timeout 3s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
                                 sleep 1
-                                if [[ -z $(timeout 3s oc get node "$node" --show-labels 2>/dev/null | grep "node-role.kubernetes.io/${node_role}=") ]]; then
+                                if [[ -z "$(timeout 3s oc get node "$node" --show-labels 2>/dev/null | grep "node-role.kubernetes.io/${node_role}=")" ]]; then
                                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
                                     all_labels_applied=false
                                     continue
@@ -125,7 +125,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: All labels successfully applied." >> $LOG_FILE
                 fi
             else
-                if [[ -z $node_label_trigger_search_result ]]; then
+                if [[ -z "$node_label_trigger_search_result" ]]; then
                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: No trigger string is found in the log file. Skipping node labeling." >> $LOG_FILE
                 fi
             fi
