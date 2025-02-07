@@ -29,6 +29,11 @@ if [[ -z "${CLUSTER_NAME}" ]]; then
     exit 1
 fi
 
+if [[ -z "${BASE_DOMAIN}" ]]; then
+    echo "Error: BASE_DOMAIN variable is empty. Exiting..."
+    exit 1
+fi
+
 # Validate binaries
 if [[ -f ./openshift-install && -f ./oc ]]; then
     export KUBECONFIG="./${CLUSTER_NAME}/auth/kubeconfig"
@@ -197,6 +202,66 @@ done
 ###
 if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
     echo "" >> "$LOG_FILE"
+
+    if [[ -n $CONFIGMAP_INGRESS_CUSTOM_ROOT_CA && -n $INGRESS_CUSTOM_TLS_KEY && -n $INGRESS_CUSTOM_TLS_CERT ]]; then
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Starting Ingress TLS and Custom CA Configuration..." >> "$LOG_FILE"
+
+        ### Create a config map that includes only the root CA certificate used to sign the wildcard certificate
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Creating ConfigMap: $CONFIGMAP_INGRESS_CUSTOM_ROOT_CA" >> "$LOG_FILE"
+
+        oc create configmap ${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA} \
+            --from-file=ca-bundle.crt=${INGRESS_CUSTOM_ROOT_CA} \
+            -n openshift-config
+
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: ConfigMap created successfully." >> "$LOG_FILE"
+
+#        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to create ConfigMap." >> "$LOG_FILE"
+
+
+        ### Update the cluster-wide proxy configuration with the newly created config map
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Patching the cluster-wide proxy configuration..." >> "$LOG_FILE"
+
+        oc patch proxy/cluster --type=merge --patch "{\"spec\":{\"trustedCA\":{\"name\":\"${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA}\"}}}"
+
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Proxy configuration patched successfully." >> "$LOG_FILE"
+
+#        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to patch proxy configuration." >> "$LOG_FILE"
+
+
+        ### Create a secret that contains the wildcard certificate chain and key
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Creating Secret: $SECRET_INGRESS_CUSTOM_TLS" >> "$LOG_FILE"
+
+        oc create secret tls ${SECRET_INGRESS_CUSTOM_TLS} \
+            --cert=${INGRESS_CUSTOM_TLS_CERT} --key=${INGRESS_CUSTOM_TLS_KEY} \
+            -n openshift-ingress
+
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: ConfigMap created successfully." >> "$LOG_FILE"
+
+#        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to create Secret." >> "$LOG_FILE"
+
+
+        ### Update the Ingress Controller configuration with the newly created secret
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Patching the Ingress Controller with the new TLS certificate..." >> "$LOG_FILE"
+
+        oc patch ingresscontroller.operator default --type=merge \
+            -p "{\"spec\":{\"defaultCertificate\":{\"name\":\"${SECRET_INGRESS_CUSTOM_TLS}\"}}}"
+            -n openshift-ingress-operator
+
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Ingress Controller patched successfully." >> "$LOG_FILE"
+
+#        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to patch Ingress Controller." >> "$LOG_FILE"
+
+
+        ### Verify the update was effective
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Verifying TLS certificate update..." >> "$LOG_FILE"
+
+        echo Q | \
+            openssl s_client -connect console-openshift-console.apps.${CLUSTER_NAME}.${BASE_DOMAIN}:443 -showcerts 2>/dev/null | \
+            openssl x509 -noout -subject -issuer -enddate
+    else
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Skipping TLS configuration due to missing required variables." >> "$LOG_FILE"
+    fi
+
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script completed successfully." >> "$LOG_FILE"
 fi
 exit 0

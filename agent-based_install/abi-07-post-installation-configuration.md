@@ -38,32 +38,14 @@ fi
 #####################
 #####################
 
-if [[ -n $CONFIGMAP_INGRESS_CUSTOM_ROOT_CA && -n $INGRESS_CUSTOM_TLS_KEY && -n $INGRESS_CUSTOM_TLS_CERT ]]; then
-    ### Create a config map that includes only the root CA certificate used to sign the wildcard certificate
-    oc create configmap ${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA} \
-        --from-file=ca-bundle.crt=${INGRESS_CUSTOM_ROOT_CA} \
-        -n openshift-config
-
-    ### Update the cluster-wide proxy configuration with the newly created config map
-    oc patch proxy/cluster --type=merge --patch "{\"spec\":{\"trustedCA\":{\"name\":\"${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA}\"}}}"
-
-
-    ### Create a secret that contains the wildcard certificate chain and key
-    oc create secret tls ${SECRET_INGRESS_CUSTOM_TLS} \
-        --cert=${INGRESS_CUSTOM_TLS_CERT} --key=${INGRESS_CUSTOM_TLS_KEY} \
-        -n openshift-ingress
-
-    ### Update the Ingress Controller configuration with the newly created secret
-    oc patch ingresscontroller.operator default --type=merge \
-        -p "{\"spec\":{\"defaultCertificate\":{\"name\":\"${SECRET_INGRESS_CUSTOM_TLS}\"}}}"
-        -n openshift-ingress-operator
-
-    ### Verify the update was effective:
-    echo Q | \
-        openssl s_client -connect console-openshift-console.apps.${CLUSTER_NAME}.${BASE_DOMAIN}:443 -showcerts 2>/dev/null | \
-        openssl x509 -noout -subject -issuer -enddate
-fi
 ```
+
+
+
+
+
+
+
 
 ```bash
 #!/bin/bash
