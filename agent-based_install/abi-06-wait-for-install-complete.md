@@ -210,53 +210,67 @@ if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
 
         oc create configmap ${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA} \
             --from-file=ca-bundle.crt=${INGRESS_CUSTOM_ROOT_CA} \
-            -n openshift-config
-
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: ConfigMap created successfully." >> "$LOG_FILE"
-
-#        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to create ConfigMap." >> "$LOG_FILE"
-
+            -n openshift-config >> "$LOG_FILE" 2>&1
+        if [[ $? -eq 0 ]]; then
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: ConfigMap created successfully." >> "$LOG_FILE"
+        else
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to create ConfigMap." >> "$LOG_FILE"
+        fi
 
         ### Update the cluster-wide proxy configuration with the newly created config map
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Patching the cluster-wide proxy configuration..." >> "$LOG_FILE"
 
-        oc patch proxy/cluster --type=merge --patch "{\"spec\":{\"trustedCA\":{\"name\":\"${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA}\"}}}"
+        oc patch proxy/cluster \
+            --type=merge \
+            --patch "{\"spec\":{\"trustedCA\":{\"name\":\"${CONFIGMAP_INGRESS_CUSTOM_ROOT_CA}\"}}}" >> "$LOG_FILE" 2>&1
 
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Proxy configuration patched successfully." >> "$LOG_FILE"
-
-#        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to patch proxy configuration." >> "$LOG_FILE"
-
+        if [[ $? -eq 0 ]]; then
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Proxy configuration patched successfully." >> "$LOG_FILE"
+        else
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to patch proxy configuration." >> "$LOG_FILE"
+        fi
 
         ### Create a secret that contains the wildcard certificate chain and key
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Creating Secret: $SECRET_INGRESS_CUSTOM_TLS" >> "$LOG_FILE"
 
         oc create secret tls ${SECRET_INGRESS_CUSTOM_TLS} \
             --cert=${INGRESS_CUSTOM_TLS_CERT} --key=${INGRESS_CUSTOM_TLS_KEY} \
-            -n openshift-ingress
+            -n openshift-ingress >> "$LOG_FILE" 2>&1
 
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: ConfigMap created successfully." >> "$LOG_FILE"
-
-#        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to create Secret." >> "$LOG_FILE"
-
+        if [[ $? -eq 0 ]]; then
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: ConfigMap created successfully." >> "$LOG_FILE"
+        else
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to create Secret." >> "$LOG_FILE"
+        fi
 
         ### Update the Ingress Controller configuration with the newly created secret
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Patching the Ingress Controller with the new TLS certificate..." >> "$LOG_FILE"
 
-        oc patch ingresscontroller.operator default --type=merge \
+        oc patch ingresscontroller.operator default \
+            --type=merge \
             -p "{\"spec\":{\"defaultCertificate\":{\"name\":\"${SECRET_INGRESS_CUSTOM_TLS}\"}}}" \
-            -n openshift-ingress-operator
+            -n openshift-ingress-operator >> "$LOG_FILE" 2>&1
 
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Ingress Controller patched successfully." >> "$LOG_FILE"
-
-#        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to patch Ingress Controller." >> "$LOG_FILE"
-
+        if [[ $? -eq 0 ]]; then
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Ingress Controller patched successfully." >> "$LOG_FILE"
+        else
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to patch Ingress Controller." >> "$LOG_FILE"
+        fi
 
         ### Verify the update was effective
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Verifying TLS certificate update..." >> "$LOG_FILE"
 
         echo Q | \
-            openssl s_client -connect console-openshift-console.apps.${CLUSTER_NAME}.${BASE_DOMAIN}:443 -showcerts 2>/dev/null | \
-            openssl x509 -noout -subject -issuer -enddate
+            openssl s_client \
+            -connect console-openshift-console.apps.${CLUSTER_NAME}.${BASE_DOMAIN}:443 \
+            -showcerts 2>/dev/null | \
+            openssl x509 -noout -subject -issuer -enddate  >> "$LOG_FILE" 2>&1
+
+        if [[ $? -eq 0 ]]; then
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: TLS verification completed successfully." >> "$LOG_FILE"
+        else
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: TLS verification failed." >> "$LOG_FILE"
+        fi
     else
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Skipping TLS configuration due to missing required variables." >> "$LOG_FILE"
     fi
