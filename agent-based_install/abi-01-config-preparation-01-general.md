@@ -164,7 +164,7 @@ VULNERABILITY_MITIGATION_TEXT="./vulnerability-mitigation-text"
 MAX_TRIES=""  # default: 3
 
 # Timeout for OpenShift commands
-TIMEOUT=""  # default: 7200 (in seconds)
+TIMEOUT=""  # default: 7200 seconds
 
 ### Log file for install-complete
 NODE_LABEL_TRIGGER_SEARCH_KEYWORD=""  # default: "cluster bootstrap is complete"

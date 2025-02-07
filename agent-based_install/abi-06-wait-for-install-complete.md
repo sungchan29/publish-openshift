@@ -46,7 +46,7 @@ fi
 MAX_TRIES=${MAX_TRIES:=3}
 
 # Timeout for OpenShift commands
-TIMEOUT=${TIMEOUT:=7200}  # 120 minutes (in seconds)
+TIMEOUT=${TIMEOUT:=7200}  # 120 minutes
 
 # PID file
 PID_FILE="./$(basename "$0").$(realpath "$0" | md5sum | cut -d' ' -f1).pid"
