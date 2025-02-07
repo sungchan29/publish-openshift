@@ -137,7 +137,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         
         # Check if the process is complete by searching for the completion keyword in the log file.
         if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
-            INSTALL_COMPLETE_STATUS="SUCCESS"
+             
             echo "" >> "$LOG_FILE"
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process completed successfully." >> "$LOG_FILE"
             break
@@ -176,6 +176,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     else
         if [[ -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
             if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
+                INSTALL_COMPLETE_STATUS="SUCCESS"
                 echo "" >> "$LOG_FILE"
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Process completed successfully." >> "$LOG_FILE"
                 break
