@@ -188,7 +188,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
 done
 
 ###
-### Log script completion
+### Ingress TLS and Custom CA Configuration
 ###
 if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
     if [[ -f $INGRESS_CUSTOM_ROOT_CA && -f $INGRESS_CUSTOM_TLS_KEY && -f $INGRESS_CUSTOM_TLS_CERT ]]; then
