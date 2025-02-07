@@ -98,19 +98,19 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     fi
                     node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
                     node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
-                    nodes="$(timeout 2s oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}")"
+                    nodes="$(timeout 10s oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}")"
                     if [[ -n $nodes ]]; then
                         for node in $nodes; do
                             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Checking labels for node: $node" >> "$LOG_FILE"
-                            if [[ -z $(timeout 2s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
+                            if [[ -z $(timeout 10s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
                                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Labeling node: $node with role: $node_role" >> $LOG_FILE
-                                if ! timeout 2s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
+                                if ! timeout 10s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
                                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
                                     all_labels_applied=false
                                     continue
                                 fi
                                 sleep 2
-                                if [[ -z $(timeout 2s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
+                                if [[ -z $(timeout 10s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
                                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Verification failed for node: $node, role: $node_role" >> $LOG_FILE
                                     all_labels_applied=false
                                     continue
@@ -138,12 +138,15 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
             INSTALL_COMPLETE_STATUS="SUCCESS"
             echo "" >> "$LOG_FILE"
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Cluster is installed." >> "$LOG_FILE"
             break
         fi
 
         # Verify if the process is still running by checking if the PID exists in the /proc directory.
         if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
+            if [[ $all_labels_applied = "true" ]]; then
+                echo "" >> "$LOG_FILE"
+            fi
+            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
             break
         fi
 
@@ -169,24 +172,15 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         fi
         sleep 5
     done
-
+    if [[ ! -d "/proc/$openshift_install_process_pid" && -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
+        if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
+            INSTALL_COMPLETE_STATUS="SUCCESS"
+        fi
+    fi
     if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Cluster is installed." >> "$LOG_FILE"
         break
     else
-        if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
-            if [[ $all_labels_applied = "true" ]]; then
-                echo "" >> "$LOG_FILE"
-            fi
-            echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
-        fi
-        if [[ -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
-            if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
-                INSTALL_COMPLETE_STATUS="SUCCESS"
-                echo "" >> "$LOG_FILE"
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Cluster is installed." >> "$LOG_FILE"
-                break
-            fi
-        fi
         if [[ $TRIES -lt $MAX_TRIES ]]; then
             TRIES=$((TRIES + 1))
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Trying process ($TRIES/$MAX_TRIES)..." >> "$LOG_FILE"
@@ -200,8 +194,6 @@ done
 ### Log script completion
 ###
 if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
-    echo "" >> "$LOG_FILE"
-
     if [[ -f $INGRESS_CUSTOM_ROOT_CA && -f $INGRESS_CUSTOM_TLS_KEY && -f $INGRESS_CUSTOM_TLS_CERT ]]; then
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Starting Ingress TLS and Custom CA Configuration..." >> "$LOG_FILE"
 
