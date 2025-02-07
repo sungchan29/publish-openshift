@@ -12,8 +12,8 @@ LOG_FILE="$(basename "$0" .sh).log"
 
 ### Log file for install-complete
 INSTALL_COMPLETE_LOG_FILE=$(realpath "./wait-for_install-complete.log")
-INSTALL_COMPLETE_SEARCH_KEYWORD="Cluster is installed"
-NODE_LABEL_TRIGGER_SEARCH_KEYWORD="cluster bootstrap is complete"
+NODE_LABEL_TRIGGER_SEARCH_KEYWORD=${NODE_LABEL_TRIGGER_SEARCH_KEYWORD:="cluster bootstrap is complete"}
+INSTALL_COMPLETE_SEARCH_KEYWORD=${INSTALL_COMPLETE_SEARCH_KEYWORD:="Cluster is installed"}
 
 ### Source the configuration file
 if [[ -f ./abi-01-config-preparation-01-general.sh ]]; then

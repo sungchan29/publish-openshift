@@ -166,6 +166,9 @@ MAX_TRIES=""  # default: 3
 # Timeout for OpenShift commands
 TIMEOUT=""  # default: 7200 (in seconds)
 
+### Log file for install-complete
+NODE_LABEL_TRIGGER_SEARCH_KEYWORD=""  # default: "cluster bootstrap is complete"
+INSTALL_COMPLETE_SEARCH_KEYWORD=""    # default: "Cluster is installed"
 
 #####################
 #####################
