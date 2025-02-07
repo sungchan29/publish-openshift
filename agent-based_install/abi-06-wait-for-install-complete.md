@@ -98,19 +98,19 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     fi
                     node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
                     node_prefix=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
-                    nodes="$(timeout 10s oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}")"
+                    nodes="$(timeout 2s oc get nodes --no-headers -o custom-columns=":metadata.name" | grep "${node_prefix}")"
                     if [[ -n $nodes ]]; then
                         for node in $nodes; do
                             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Checking labels for node: $node" >> "$LOG_FILE"
-                            if [[ -z $(timeout 10s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
+                            if [[ -z $(timeout 2s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
                                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Labeling node: $node with role: $node_role" >> $LOG_FILE
-                                if ! timeout 10s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
+                                if ! timeout 2s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1; then
                                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
                                     all_labels_applied=false
                                     continue
                                 fi
                                 sleep 2
-                                if [[ -z $(timeout 10s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
+                                if [[ -z $(timeout 2s oc get node "$node" --show-labels | grep "node-role.kubernetes.io/${node_role}=") ]]; then
                                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Verification failed for node: $node, role: $node_role" >> $LOG_FILE
                                     all_labels_applied=false
                                     continue
