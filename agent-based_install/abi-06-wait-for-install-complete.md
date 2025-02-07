@@ -129,7 +129,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                 fi
             else
                 if [[ -z $node_label_trigger_search_result ]]; then
-                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: No trigger string was found in the log file. Skipping node labeling." >> $LOG_FILE
+                    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: No trigger string is found in the log file. Skipping node labeling." >> $LOG_FILE
                 fi
             fi
         fi
