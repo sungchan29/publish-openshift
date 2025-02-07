@@ -10,11 +10,6 @@ vi abi-06-wait-for-install-complete.sh
 ### Define the log file name for the script.
 LOG_FILE="$(basename "$0" .sh).log"
 
-### Log file for install-complete
-INSTALL_COMPLETE_LOG_FILE=$(realpath "./wait-for_install-complete.log")
-NODE_LABEL_TRIGGER_SEARCH_KEYWORD=${NODE_LABEL_TRIGGER_SEARCH_KEYWORD:="cluster bootstrap is complete"}
-INSTALL_COMPLETE_SEARCH_KEYWORD=${INSTALL_COMPLETE_SEARCH_KEYWORD:="Cluster is installed"}
-
 ### Source the configuration file
 if [[ -f ./abi-01-config-preparation-01-general.sh ]]; then
     source "./abi-01-config-preparation-01-general.sh"
@@ -41,6 +36,11 @@ else
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Required binaries (openshift-install, oc) not found. Exiting..." > $LOG_FILE
     exit 1
 fi
+
+### Log file for install-complete
+INSTALL_COMPLETE_LOG_FILE=${INSTALL_COMPLETE_LOG_FILE:="./wait-for_install-complete.log"}
+NODE_LABEL_TRIGGER_SEARCH_KEYWORD=${NODE_LABEL_TRIGGER_SEARCH_KEYWORD:="cluster bootstrap is complete"}
+INSTALL_COMPLETE_SEARCH_KEYWORD=${INSTALL_COMPLETE_SEARCH_KEYWORD:="Cluster is installed"}
 
 # Set the default value for MAX_TRIES if it is not already defined.
 MAX_TRIES=${MAX_TRIES:=3}
@@ -73,9 +73,6 @@ echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Script has started successfully." > "
 
 INSTALL_COMPLETE_STATUS=""
 TRIES=1
-if [[ -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
-    rm -f "$INSTALL_COMPLETE_LOG_FILE"
-fi
 while [[ $TRIES -le $MAX_TRIES ]]; do
     ./openshift-install agent wait-for install-complete  --dir $CLUSTER_NAME --log-level=debug > "$INSTALL_COMPLETE_LOG_FILE" 2>&1 &
     openshift_install_process_pid=$!
