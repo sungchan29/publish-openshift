@@ -173,7 +173,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
             if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
             fi
-            if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
+            if tail -n 10 "$INSTALL_COMPLETE_LOG_FILE" | grep -q "$INSTALL_COMPLETE_SEARCH_KEYWORD"; then
                 INSTALL_COMPLETE_STATUS="SUCCESS"
                 break
             fi
