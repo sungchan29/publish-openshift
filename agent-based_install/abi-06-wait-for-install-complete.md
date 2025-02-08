@@ -132,7 +132,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         fi
         
         # Check if the process is complete by searching for the completion keyword in the log file.
-        if grep "$INSTALL_COMPLETE_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
+        if tail -n 10 "$INSTALL_COMPLETE_LOG_FILE" | grep -q "$INSTALL_COMPLETE_SEARCH_KEYWORD"; then
             INSTALL_COMPLETE_STATUS="SUCCESS"
             break
         fi
