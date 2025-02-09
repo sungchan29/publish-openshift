@@ -80,14 +80,13 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     
     if [[ $TRIES -eq 1 ]]; then
         sleep 60
-    else
-        sleep 3
     fi
 
     all_labels_applied=false
     start_time=$(date +%s)
     node_label_trigger_search_result=""
     while [[ -f "$INSTALL_COMPLETE_LOG_FILE" && -d "/proc/$openshift_install_process_pid" ]]; do
+        sleep 5
         # Apply node labels if not already applied
         if [[ -n "$NODE_ROLE_SELECTORS" && "$all_labels_applied" = "false" ]]; then
             if [[ -z "$node_label_trigger_search_result" ]] && grep -q "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
@@ -160,7 +159,6 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" ]]; then
             echo -n "." >> "$LOG_FILE" 
         fi
-        sleep 5
     done
 
     if [[ "$all_labels_applied" = "true" ]]; then
@@ -168,17 +166,15 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     fi
 
     if [[ "$INSTALL_COMPLETE_STATUS" = "SUCCESS" ]]; then
-        echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Cluster is installed." >> "$LOG_FILE"
         break
     else
+        # Verify if the process is still running by checking if the PID exists in the /proc directory.
         if [[ ! -d "/proc/$openshift_install_process_pid" && -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
-            # Verify if the process is still running by checking if the PID exists in the /proc directory.
-            if [[ ! -d "/proc/$openshift_install_process_pid" ]]; then
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
-            fi
             if tail -n 10 "$INSTALL_COMPLETE_LOG_FILE" | grep -q "$INSTALL_COMPLETE_SEARCH_KEYWORD"; then
                 INSTALL_COMPLETE_STATUS="SUCCESS"
                 break
+            else
+                echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
             fi
         fi
         if [[ $TRIES -lt $MAX_TRIES ]]; then
@@ -194,6 +190,7 @@ done
 ### Ingress TLS and Custom CA Configuration
 ###
 if [[ "$INSTALL_COMPLETE_STATUS" = "SUCCESS" ]]; then
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Cluster is installed." >> "$LOG_FILE"
     if [[ -f "$INGRESS_CUSTOM_ROOT_CA" && -f "$INGRESS_CUSTOM_TLS_KEY" && -f "$INGRESS_CUSTOM_TLS_CERT" ]]; then
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Starting Ingress TLS and Custom CA Configuration..." >> "$LOG_FILE"
 
