@@ -84,9 +84,9 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     node_label_trigger_search_result=""
     while [[ -f "$INSTALL_COMPLETE_LOG_FILE" && -d "/proc/$openshift_install_process_pid" ]]; do
         # Apply node labels if not already applied
-        if [[ -n "$NODE_ROLE_SELECTORS" && $all_labels_applied = "false" ]]; then
-            if [[ -z "$node_label_trigger_search_result" ]]; then
-                node_label_trigger_search_result=$(grep "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE" || true)
+        if [[ -n "$NODE_ROLE_SELECTORS" && "$all_labels_applied" = "false" ]]; then
+            if [[ -z "$node_label_trigger_search_result" ]] && grep -q "$NODE_LABEL_TRIGGER_SEARCH_KEYWORD" "$INSTALL_COMPLETE_LOG_FILE"; then
+                node_label_trigger_search_result="OK"
             fi
             if [[ -n "$node_label_trigger_search_result" ]]; then
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Applying node labels..." >> $LOG_FILE
@@ -102,12 +102,12 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     if [[ -n "$nodes" ]]; then
                         for node in $nodes; do
                             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Checking labels for node: $node" >> "$LOG_FILE"
-                            if [[ -z $(timeout 3s oc get node "$node" --show-labels 2>/dev/null  | grep "node-role.kubernetes.io/${node_role}=") ]]; then
+                            if ! timeout 3s oc get node "$node" --show-labels 2>/dev/null | grep -q "node-role.kubernetes.io/${node_role}="; then
                                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Labeling node: $node with role: $node_role" >> $LOG_FILE
 
                                 timeout 3s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
                                 sleep 1
-                                if [[ -z "$(timeout 3s oc get node "$node" --show-labels 2>/dev/null | grep "node-role.kubernetes.io/${node_role}=")" ]]; then
+                                if ! timeout 3s oc get node "$node" --show-labels 2>/dev/null | grep -q "node-role.kubernetes.io/${node_role}="; then
                                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
                                     all_labels_applied=false
                                     continue
@@ -121,7 +121,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     fi
                 done
 
-                if [[ $all_labels_applied = "true" ]]; then
+                if [[ "$all_labels_applied" = "true" ]]; then
                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: All labels successfully applied." >> $LOG_FILE
                 fi
             else
@@ -160,11 +160,11 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         sleep 5
     done
 
-    if [[ $all_labels_applied = "true" ]]; then
+    if [[ "$all_labels_applied" = "true" ]]; then
         echo "" >> "$LOG_FILE"
     fi
 
-    if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
+    if [[ "$INSTALL_COMPLETE_STATUS" = "SUCCESS" ]]; then
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Cluster is installed." >> "$LOG_FILE"
         break
     else
@@ -190,8 +190,8 @@ done
 ###
 ### Ingress TLS and Custom CA Configuration
 ###
-if [[ $INSTALL_COMPLETE_STATUS = "SUCCESS" ]]; then
-    if [[ -f $INGRESS_CUSTOM_ROOT_CA && -f $INGRESS_CUSTOM_TLS_KEY && -f $INGRESS_CUSTOM_TLS_CERT ]]; then
+if [[ "$INSTALL_COMPLETE_STATUS" = "SUCCESS" ]]; then
+    if [[ -f "$INGRESS_CUSTOM_ROOT_CA" && -f "$INGRESS_CUSTOM_TLS_KEY" && -f "$INGRESS_CUSTOM_TLS_CERT" ]]; then
         echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Starting Ingress TLS and Custom CA Configuration..." >> "$LOG_FILE"
 
         ### Create a config map that includes only the root CA certificate used to sign the wildcard certificate
