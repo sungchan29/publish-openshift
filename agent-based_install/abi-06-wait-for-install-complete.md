@@ -106,7 +106,6 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     nodes="$(timeout 3s oc get nodes --no-headers -o custom-columns=":metadata.name" 2>/dev/null | grep "${node_prefix}")"
                     if [[ -n "$nodes" ]]; then
                         for node in $nodes; do
-                            echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Checking labels for node: $node" >> "$LOG_FILE"
                             if timeout 3s oc get node "$node" --show-labels 2>/dev/null | grep -q "node-role.kubernetes.io/${node_role}="; then
                                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
                             else
