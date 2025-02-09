@@ -77,7 +77,12 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     ./openshift-install agent wait-for install-complete  --dir $CLUSTER_NAME --log-level=debug > "$INSTALL_COMPLETE_LOG_FILE" 2>&1 &
     openshift_install_process_pid=$!
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Started 'openshift-install' process with PID: $openshift_install_process_pid." >> "$LOG_FILE"
-    sleep 3
+    
+    if [[ $TRIES -eq 1 ]]; then
+        sleep 60
+    else
+        sleep 3
+    fi
 
     all_labels_applied=false
     start_time=$(date +%s)
