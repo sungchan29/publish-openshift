@@ -168,15 +168,8 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
     if [[ "$INSTALL_COMPLETE_STATUS" = "SUCCESS" ]]; then
         break
     else
-        # Verify if the process is still running by checking if the PID exists in the /proc directory.
-        if [[ ! -d "/proc/$openshift_install_process_pid" && -f "$INSTALL_COMPLETE_LOG_FILE" ]]; then
-            if tail -n 10 "$INSTALL_COMPLETE_LOG_FILE" | grep -q "$INSTALL_COMPLETE_SEARCH_KEYWORD"; then
-                INSTALL_COMPLETE_STATUS="SUCCESS"
-                break
-            else
-                echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
-            fi
-        fi
+        echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Process $openshift_install_process_pid is no longer running." >> "$LOG_FILE"
+
         if [[ $TRIES -lt $MAX_TRIES ]]; then
             TRIES=$((TRIES + 1))
             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Trying process ($TRIES/$MAX_TRIES)..." >> "$LOG_FILE"
