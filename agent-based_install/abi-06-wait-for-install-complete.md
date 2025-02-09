@@ -107,18 +107,17 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
                     if [[ -n "$nodes" ]]; then
                         for node in $nodes; do
                             echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Checking labels for node: $node" >> "$LOG_FILE"
-                            if ! timeout 3s oc get node "$node" --show-labels 2>/dev/null | grep -q "node-role.kubernetes.io/${node_role}="; then
+                            if timeout 3s oc get node "$node" --show-labels 2>/dev/null | grep -q "node-role.kubernetes.io/${node_role}="; then
+                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
+                            else
                                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Labeling node: $node with role: $node_role" >> $LOG_FILE
-
-                                timeout 3s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite=true >> $LOG_FILE 2>&1
-                                sleep 1
+                                timeout 3s oc label node "$node" node-role.kubernetes.io/${node_role}= --overwrite >> $LOG_FILE 2>&1
+                                sleep 2
                                 if ! timeout 3s oc get node "$node" --show-labels 2>/dev/null | grep -q "node-role.kubernetes.io/${node_role}="; then
                                     echo "[$(date +"%Y-%m-%d %H:%M:%S")] ERROR: Failed to label node: $node with role: $node_role" >> $LOG_FILE
                                     all_labels_applied=false
                                     continue
                                 fi
-                            else
-                                echo "[$(date +"%Y-%m-%d %H:%M:%S")] INFO: Node: $node already labeled with role: $node_role. Skipping..." >> $LOG_FILE
                             fi
                         done
                     else
