@@ -156,7 +156,7 @@ while [[ $TRIES -le $MAX_TRIES ]]; do
         fi
 
         # Log progress
-        if [[ -z $NODE_ROLE_SELECTORS || $all_labels_applied = "true" ]]; then
+        if [[ -z "$NODE_ROLE_SELECTORS" || "$all_labels_applied" = "true" ]]; then
             echo -n "." >> "$LOG_FILE" 
         fi
     done
