@@ -138,7 +138,7 @@ do
     echo "[INFO] Enter the NFS base path for project '$project_name'."
     echo "[INFO] If you do not enter a value, the default ('') will be used."
     echo "[INFO] - If you provide an empty value (''), permissions will be modified directly on the NFS path set in the PV."
-    echo "[INFO] - If you enter a specific path, it will be used as the base directory under the PV's configured path."
+    echo "[INFO] - The NFS path configured in the PV must be structured as a subdirectory under the specified path."
     echo "[INFO]   In this case, additional directories will be automatically created under the specified base directory."
     read -p "NFS Base Path (press Enter to use default ''): " NFS_BASE_PATH
     NFS_BASE_PATH=${NFS_BASE_PATH:-""}  # Default value if not provided
