@@ -136,17 +136,11 @@ do
     echo "###"
     echo "========================================"
     echo "[INFO] Enter the NFS base path for project '$project_name'."
-    echo "[INFO] If you do not enter a value, the default (empty) will be used."
-    read -p "NFS base path (press Enter to use default ''): " NFS_BASE_PATH
+    echo "[INFO] If you do not enter a value, the default ('') will be used."
+    echo "[INFO] - If you provide an empty value (''), permissions will be modified directly on the NFS path set in the PV."
+    echo "[INFO] - If you enter a specific path, a directory will be created, and permissions will be updated accordingly."
+    read -p "NFS Base Path (press Enter to use default ''): " NFS_BASE_PATH
     NFS_BASE_PATH=${NFS_BASE_PATH:-""}  # Default value if not provided
-
-    if [[ -z "$NFS_BASE_PATH" ]]; then
-        echo "[INFO] No NFS base path provided."
-        echo "[INFO] Permissions will be modified directly on the NFS path set in the PV."
-    else
-        echo "[INFO] Using NFS base path: ${NFS_BASE_PATH}"
-        echo "[INFO] A directory will be created based on the NFS path set in the PV, and permissions will be updated accordingly."
-    fi
     echo "========================================"
 
     ### Retrieve OpenShift project UID
