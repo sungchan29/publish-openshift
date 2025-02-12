@@ -440,7 +440,7 @@ do
         echo
     else
         if [[ "true" = ${silent} ]]; then
-            mkdir -p ${PROJ_BACKUP_DIR} > /dev/null 2>&1
+            mkdir -p ${PROJ_BACKUP_DIR} >> /dev/null 2>&1
         else
             mkdir -p ${PROJ_BACKUP_DIR}
         fi

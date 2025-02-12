@@ -1,108 +1,248 @@
 #!/bin/bash
 
-# Define the OpenShift project name
-PROJECT_NAME="scm-manager"
-
-# Base directory for NFS storage provided by the storage team
-NFS_BASE_PATH="/data/exports/ocp"
-
 # Local mount directory for NFS storage on the RHEL system
 MOUNT_PATH="/mnt/nfs"
 
-# Retrieve OpenShift project UID
-echo "[INFO] Fetching OpenShift UID for project: $PROJECT_NAME"
-PROJECT_UID=$(oc get project $PROJECT_NAME -o jsonpath='{.metadata.annotations.openshift\.io/sa\.scc\.uid-range}' | cut -d'/' -f1)
+API_SERVER=""
 
-# Exit if UID retrieval fails
-if [ -z "$PROJECT_UID" ]; then
-    echo "[ERROR] Failed to fetch project UID." >&2
-    exit 1
-fi
+################
+### Function ###
+################
 
-echo "[INFO] Project UID: $PROJECT_UID"
-
-# Get the list of all PVCs in the project
-PVC_LIST=$(oc get pvc -n $PROJECT_NAME -o jsonpath='{.items[*].metadata.name}')
-
-# Check if any PVCs exist
-if [ -z "$PVC_LIST" ]; then
-    echo "[INFO] No PVCs found in project: $PROJECT_NAME"
+usage() {
+    echo
+    echo "Usage: $0 " '--username=<username> [--projects "<project|base_nfs_path> ... <project|base_nfs_path>"] [<api server>]'
+    echo
     exit 0
+}
+
+while [[ $# -gt 0 ]];
+do
+    case "$1" in
+        --help)
+            help="true"
+            shift
+            ;;
+        -h)
+            help="true"
+            shift
+            ;;
+        --username=*)
+            username="${1#*=}"
+            shift
+            ;;
+        --username)
+            username="$2"
+            shift 2
+            ;;
+        --password=*)
+            password="${1#*=}"
+            shift
+            ;;
+        --password)
+            password="$2"
+            shift 2
+            ;;
+        --projects=*)
+            projects="${1#*=}"
+            shift
+            ;;
+        --projects)
+            projects=$(echo "$2" | awk '{$1=$1; print}')
+            shift 2
+            ;;
+        -u)
+            username="$2"
+            shift 2
+            ;;
+        -p)
+            password="$2"
+            shift 2
+            ;;
+        *)
+            apiserver="$1"
+            shift
+            ;;
+    esac
+done
+
+if [[ "true" = ${help} ]]; then
+    usage
 fi
 
-echo "[INFO] Checking PVCs in project: $PROJECT_NAME"
-
-# Define local mount path for individual PVC
+### Define local mount path for individual PVC
 mkdir -p $MOUNT_PATH
 
-# Iterate through each PVC to retrieve its bound PV
-for PVC in $PVC_LIST; do
-    PV_NAME=$(oc get pvc $PVC -n $PROJECT_NAME -o jsonpath='{.spec.volumeName}')
+### Check utils(oc) ###
+echo "========================================"
+echo "[INFO] Checking if OpenShift CLI (oc) is installed..."
+if [[ -n ${PATH_UTIL} ]]; then
+    export PATH="${PATH_UTIL}:${PATH}"
+fi
 
-    # Skip PVCs that are not bound to any PV
-    if [ -z "$PV_NAME" ]; then
-        echo "[INFO] PVC: $PVC is not bound to any PV."
-        continue
+which oc > /dev/null 2>&1
+if [[ $? -ne 0 ]]; then
+    echo "[ERROR] The 'oc' command was not found."
+    echo "[ERROR] Please ensure OpenShift CLI (oc) is installed and available in the system PATH."
+    echo "========================================"
+    exit 1
+fi
+echo "[INFO] OpenShift CLI (oc) is available."
+echo "========================================"
+
+### oc logout ###
+echo "[INFO] Checking existing OpenShift session..."
+USER_TOKEN=$(oc config view --minify -o jsonpath='{.users[].user.token}' 2>/dev/null)
+if [[ -n "${USER_TOKEN}" ]]; then
+    echo "[INFO] Logging out from existing OpenShift session..."
+    oc logout
+    echo "[INFO] Successfully logged out from previous session."
+fi
+echo "========================================"
+
+### Log in to your server ###
+echo "[INFO] Attempting to log in to OpenShift with user: $username"
+if [[ -z "$username" ]]; then
+    usage
+else
+    if [[ -z "$password" ]]; then
+        oc login -u $username $apiserver --insecure-skip-tls-verify
+    else
+        oc login -u ${username} -p ${password} ${apiserver} --insecure-skip-tls-verify
+    fi
+fi
+
+### Check login success ###
+if [[ $? -ne 0 ]]; then
+    echo "[ERROR] OpenShift login failed."
+    echo "[ERROR] Please check your credentials and API server address."
+    echo "========================================"
+    exit 1
+fi
+echo "[INFO] OpenShift login successful."
+echo "========================================"
+
+if [[ -z "$projects" ]]; then
+    ### Get OpenShift project name from user input
+    read -p "Enter OpenShift project name: " projects
+    echo "========================================"
+fi
+
+for project_name in $projects
+do
+    ### Get NFS base path from user input (optional)
+    echo "###"
+    echo "### Prjoject: $project_name"
+    echo "###"
+    echo "========================================"
+    echo "[INFO] Enter the NFS base path for project '$project_name'."
+    echo "[INFO] If you do not enter a value, the default (empty) will be used."
+    read -p "NFS base path (press Enter to use default ''): " NFS_BASE_PATH
+    NFS_BASE_PATH=${NFS_BASE_PATH:-""}  # Default value if not provided
+
+    if [[ -z "$NFS_BASE_PATH" ]]; then
+        echo "[INFO] No NFS base path provided."
+        echo "[INFO] Permissions will be modified directly on the NFS path set in the PV."
+    else
+        echo "[INFO] Using NFS base path: ${NFS_BASE_PATH}"
+        echo "[INFO] A directory will be created based on the NFS path set in the PV, and permissions will be updated accordingly."
+    fi
+    echo "========================================"
+
+    ### Retrieve OpenShift project UID
+    echo "[INFO] Fetching OpenShift UID for project: $project_name"
+    PROJECT_UID=$(oc get project $project_name -o jsonpath='{.metadata.annotations.openshift\.io/sa\.scc\.uid-range}' | cut -d'/' -f1)
+
+    ### Exit if UID retrieval fails
+    if [ -z "$PROJECT_UID" ]; then
+        echo "[ERROR] Failed to fetch project UID."
+        echo "========================================"
+        exit 1
+    fi
+    echo "[INFO] Project UID: $PROJECT_UID"
+    echo "========================================"
+
+    ### Get the list of all PVCs in the project
+    echo "[INFO] Fetching PVC list for project: $project_name"
+    PVC_LIST=$(oc get pvc -n $project_name -o jsonpath='{.items[*].metadata.name}')
+
+    ### Check if any PVCs exist
+    if [ -z "$PVC_LIST" ]; then
+        echo "[INFO] No PVCs found in project: $project_name"
+        echo "========================================"
+        exit 0
     fi
 
-    # Retrieve the NFS server and path from the PV
-    NFS_SERVER=$(oc get pv $PV_NAME -o jsonpath='{.spec.nfs.server}')
-    NFS_PATH=$(oc get pv $PV_NAME -o jsonpath='{.spec.nfs.path}')
+    ### Iterate through each PVC to retrieve its bound PV
+    echo "[INFO] Checking PVCs in project: $project_name"
+    for PVC in $PVC_LIST; do
+        PV_NAME=$(oc -n $project_name get pvc $PVC -o jsonpath='{.spec.volumeName}')
 
-    # Skip PVs without NFS configuration
-    if [ -z "$NFS_SERVER" ] || [ -z "$NFS_PATH" ]; then
-        echo "[ERROR] PV: $PV_NAME does not have NFS configuration." >&2
-        continue
-    fi
-
-    # Mount the NFS volume
-    if [[ -n "$NFS_BASE_PATH" ]]; then
-        # Extract subdirectory path if NFS_PATH contains NFS_BASE_PATH
-        SUB_PATH=""
-        if [[ "$NFS_PATH" == "$NFS_BASE_PATH"* ]]; then
-            SUB_PATH="${NFS_PATH#"$NFS_BASE_PATH"/}"  # Remove base path including the trailing slash
-            echo "[INFO] Provided NFS base directory: $NFS_BASE_PATH"
-            echo "[INFO] Derived subdirectory from the provided NFS base: $SUB_PATH"
-        else
-            echo "[ERROR] NFS_PATH does not match the provided NFS base directory." >&2
+        ### Skip PVCs that are not bound to any PV
+        if [ -z "$PV_NAME" ]; then
+            echo "[INFO] PVC: $PVC is not bound to any PV."
             continue
         fi
 
-        echo "[INFO] Mounting $MOUNT_PATH..."
-        mount -t nfs $NFS_SERVER:$NFS_BASE_PATH $MOUNT_PATH
-            
-        # Verify if the mount was successful
-        if mountpoint -q $MOUNT_PATH; then
-            echo "[INFO] Successfully mounted $NFS_SERVER:$NFS_PATH to $MOUNT_PATH"
-        else
-            echo "[ERROR] Failed to mount $NFS_SERVER:$NFS_PATH to $MOUNT_PATH" >&2
+        ### Retrieve the NFS server and path from the PV
+        NFS_SERVER=$(oc -n $project_name get pv $PV_NAME -o jsonpath='{.spec.nfs.server}')
+        NFS_PATH=$(oc -n $project_name get pv $PV_NAME -o jsonpath='{.spec.nfs.path}')
+
+        ### Skip PVs without NFS configuration
+        if [ -z "$NFS_SERVER" ] || [ -z "$NFS_PATH" ]; then
+            echo "[ERROR] PV: $PV_NAME does not have NFS configuration."
+            echo "========================================"
+            continue
         fi
 
-        # Create the subdirectory and set ownership
-        mkdir -p $MOUNT_PATH/$SUB_PATH
-        chown -R $PROJECT_UID $MOUNT_PATH/$SUB_PATH
-    else
-        echo "[INFO] Mounting $MOUNT_PATH..."
-        mount -t nfs $NFS_SERVER:$NFS_PATH $MOUNT_PATH
+        echo "[INFO] Processing PV: $PV_NAME"
+        echo "[INFO] NFS Server: $NFS_SERVER"
+        echo "[INFO] NFS Path: $NFS_PATH"
 
-        # Verify if the mount was successful
-        if mountpoint -q $MOUNT_PATH; then
-            echo "[INFO] Successfully mounted $NFS_SERVER:$NFS_PATH to $MOUNT_PATH"
-            # Set correct ownership
+        ### Mount the NFS volume
+        echo "[INFO] Mounting NFS storage..."
+        if [[ -n "$NFS_BASE_PATH" ]]; then
+            ### Extract subdirectory path if NFS_PATH contains NFS_BASE_PATH
+            SUB_PATH=""
+            if [[ "$NFS_PATH" == "$NFS_BASE_PATH"* ]]; then
+                SUB_PATH="${NFS_PATH#"$NFS_BASE_PATH"/}"
+                echo "[INFO] Derived subdirectory: $SUB_PATH"
+            else
+                echo "[ERROR] NFS_PATH does not match the provided NFS base directory."
+                echo "========================================"
+                continue
+            fi
+            mount -t nfs $NFS_SERVER:$NFS_BASE_PATH $MOUNT_PATH
+            mkdir -p $MOUNT_PATH/$SUB_PATH
+            chown -R $PROJECT_UID $MOUNT_PATH/$SUB_PATH
+        else
+            mount -t nfs $NFS_SERVER:$NFS_PATH $MOUNT_PATH
             chown -R $PROJECT_UID $MOUNT_PATH
-        else
-            echo "[ERROR] Failed to mount $NFS_SERVER:$NFS_PATH to $MOUNT_PATH" >&2
         fi
-    fi
 
-    echo "[INFO] Running command: ls -al $MOUNT_PATH"
-    df -h $MOUNT_PATH
-    echo "[INFO] Running command: ls -al $MOUNT_PATH"
-    ls -al $MOUNT_PATH
+        echo "[INFO] Running df -h on mounted path:"
+        df -h $MOUNT_PATH
+        echo "[INFO] Listing contents of mounted path:"
+        ls -al $MOUNT_PATH
 
-    # Unmount NAS
-    echo "[INFO] Unmounting NAS..."
-    umount $MOUNT_PATH || { echo "[ERROR] Failed to unmount NFS" >&2; }
+        ### Unmount NAS
+        echo "[INFO] Unmounting NAS..."
+        umount $MOUNT_PATH || { echo "[ERROR] Failed to unmount NFS"; }
+        echo "========================================"
+    done
 done
 
 echo "[INFO] OpenShift storage setup completed successfully."
+echo "========================================"
+
+### Log out from OpenShift
+echo "[INFO] Logging out from OpenShift..."
+oc logout
+
+### Check logout success
+if [[ $? -ne 0 ]]; then
+    echo "[WARNING] OpenShift logout may have failed."
+else
+    echo "[INFO] Successfully logged out from OpenShift."
+fi
+echo "========================================"
