@@ -35,14 +35,6 @@ do
             username="$2"
             shift 2
             ;;
-        --password=*)
-            password="${1#*=}"
-            shift
-            ;;
-        --password)
-            password="$2"
-            shift 2
-            ;;
         --projects=*)
             projects="${1#*=}"
             shift
@@ -53,10 +45,6 @@ do
             ;;
         -u)
             username="$2"
-            shift 2
-            ;;
-        -p)
-            password="$2"
             shift 2
             ;;
         *)
