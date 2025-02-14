@@ -185,23 +185,38 @@ do
 
         ### Mount the NFS volume
         echo "[INFO] Mounting NFS storage..."
+        echo "========================================"
         if [[ -n "$NFS_BASE_PATH" ]]; then
             ### Extract subdirectory path if NFS_PATH contains NFS_BASE_PATH
             SUB_PATH=""
-            if [[ "$NFS_PATH" == "$NFS_BASE_PATH"* ]]; then
+            if [[ "$NFS_PATH" == "$NFS_BASE_PATH/"* ]]; then
                 SUB_PATH="${NFS_PATH#"$NFS_BASE_PATH"/}"
                 echo "[INFO] Derived subdirectory: $SUB_PATH"
             else
-                echo "[ERROR] NFS_BASE_PATH does not match the provided NFS base directory."
+                echo "[ERROR] The provided NFS_BASE_PATH ($NFS_BASE_PATH) does not match the NFS directory configured in the PV."
                 echo "========================================"
                 continue
             fi
             mount -t nfs $NFS_SERVER:$NFS_BASE_PATH $MOUNT_PATH
-            mkdir -p $MOUNT_PATH/$SUB_PATH
-            chown -R $PROJECT_UID $MOUNT_PATH/$SUB_PATH
+            if [[ $? -ne 0 ]]; then
+                echo "[ERROR] Failed to mount NFS storage from $NFS_SERVER:$NFS_BASE_PATH to $MOUNT_PATH."
+                echo "[ERROR] Please check if the NFS server is reachable and the path exists."
+                echo "========================================"
+                continue
+            else
+                mkdir -p $MOUNT_PATH/$SUB_PATH
+                chown -R $PROJECT_UID $MOUNT_PATH/$SUB_PATH
+            fi
         else
             mount -t nfs $NFS_SERVER:$NFS_PATH $MOUNT_PATH
-            chown -R $PROJECT_UID $MOUNT_PATH
+            if [[ $? -ne 0 ]]; then
+                echo "[ERROR] Failed to mount NFS storage from $NFS_SERVER:$NFS_PATH to $MOUNT_PATH."
+                echo "[ERROR] Please check if the NFS server is reachable and the path exists."
+                echo "========================================"
+                continue
+            else
+                chown -R $PROJECT_UID $MOUNT_PATH
+            fi
         fi
 
         echo "[INFO] Running df -h on mounted path:"
