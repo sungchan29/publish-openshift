@@ -27,7 +27,7 @@ while [[ $# -gt 0 ]]; do
                 username="$2"
                 shift 2
             else
-                echo "[ERROR] -u option requires a value."
+                echo "[ERROR] -u option requires a username."
                 exit 1
             fi
             ;;
