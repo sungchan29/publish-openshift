@@ -23,25 +23,31 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -u)
-            username="$2"
-            shift 2
+            if [[ -n "$2" && "$2" != -* ]]; then
+                username="$2"
+                shift 2
+            else
+                echo "[ERROR] -u option requires a value."
+                exit 1
+            fi
             ;;
         --project=*)
             projects="${1#*=}"
             shift
             ;;
-        # Reject undefined long options (e.g., --invalid)
-        --*)
-            echo "[ERROR] Invalid option: $1"
-            exit 1
-            ;;
-        # Reject undefined short options (e.g., -p)
+        # Reject all undefined options starting with '-'
         -*)
             echo "[ERROR] Invalid option: $1"
             exit 1
             ;;
+        # Assign the first non-option argument as the API server
         *)
-            apiserver="$1"
+            if [[ -z "$apiserver" ]]; then
+                apiserver="$1"
+            else
+                echo "[ERROR] Multiple API server values provided: $1"
+                exit 1
+            fi
             shift
             ;;
     esac
