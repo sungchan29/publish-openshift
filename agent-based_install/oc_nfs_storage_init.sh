@@ -11,7 +11,7 @@ API_SERVER=""
 
 usage() {
     echo
-    echo "Usage: $0 " '--username=<username> [--projects "<project|base_nfs_path> ... <project|base_nfs_path>"] [<api server>]'
+    echo "Usage: $0 " '-u <username> [--project="<project> ... <project>"] [<api server>]'
     echo
     exit 0
 }
@@ -22,21 +22,13 @@ while [[ $# -gt 0 ]]; do
             help="true"
             shift
             ;;
-        --username=*)
-            username="${1#*=}"
-            shift
-            ;;
-        --username | -u)
+        -u)
             username="$2"
             shift 2
             ;;
-        --projects=*)
+        --project=*)
             projects="${1#*=}"
             shift
-            ;;
-        --projects)
-            projects=$(echo "$2" | awk '{$1=$1; print}')
-            shift 2
             ;;
         # Reject undefined long options (e.g., --invalid)
         --*)
