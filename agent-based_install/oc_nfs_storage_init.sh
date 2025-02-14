@@ -127,8 +127,10 @@ do
     echo "[INFO] - If a specific path is entered, the NFS path configured in the PV must be structured as a subdirectory under the specified path."
     echo "[INFO]   Required directories will be automatically created based on the NFS path defined in the PV."
 
+    ### Read NFS_BASE_PATH from user input and normalize it
     read -p "NFS Base Path (press Enter to use default ''): " NFS_BASE_PATH
-    NFS_BASE_PATH=${NFS_BASE_PATH:-""}  # Default value if not provided
+    NFS_BASE_PATH=${NFS_BASE_PATH:-""}  # Default to empty string if not provided
+    NFS_BASE_PATH="${NFS_BASE_PATH%/}"  # Remove trailing slash if exists
     echo "========================================"
 
     ### Retrieve OpenShift project UID
@@ -190,7 +192,7 @@ do
                 SUB_PATH="${NFS_PATH#"$NFS_BASE_PATH"/}"
                 echo "[INFO] Derived subdirectory: $SUB_PATH"
             else
-                echo "[ERROR] NFS_PATH does not match the provided NFS base directory."
+                echo "[ERROR] NFS_BASE_PATH does not match the provided NFS base directory."
                 echo "========================================"
                 continue
             fi
