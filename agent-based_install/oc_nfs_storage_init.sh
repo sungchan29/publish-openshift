@@ -16,14 +16,9 @@ usage() {
     exit 0
 }
 
-while [[ $# -gt 0 ]];
-do
+while [[ $# -gt 0 ]]; do
     case "$1" in
-        --help)
-            help="true"
-            shift
-            ;;
-        -h)
+        --help | -h)
             help="true"
             shift
             ;;
@@ -31,7 +26,7 @@ do
             username="${1#*=}"
             shift
             ;;
-        --username)
+        --username | -u)
             username="$2"
             shift 2
             ;;
@@ -43,9 +38,15 @@ do
             projects=$(echo "$2" | awk '{$1=$1; print}')
             shift 2
             ;;
-        -u)
-            username="$2"
-            shift 2
+        # Reject undefined long options (e.g., --invalid)
+        --*)
+            echo "[ERROR] Invalid option: $1"
+            exit 1
+            ;;
+        # Reject undefined short options (e.g., -p)
+        -*)
+            echo "[ERROR] Invalid option: $1"
+            exit 1
             ;;
         *)
             apiserver="$1"
