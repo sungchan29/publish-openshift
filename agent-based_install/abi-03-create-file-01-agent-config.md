@@ -77,25 +77,20 @@ EOF
 
 ### Config for NTP
 if [[ -n $NTP_SERVER_01 ]]; then
-
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+    cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
 additionalNTPSources:
   - $NTP_SERVER_01
 EOF
-
     if [[ -n $NTP_SERVER_02 ]]; then
-
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+        cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
   - $NTP_SERVER_02
 EOF
-
     fi
 fi
 
 ### Config for rendezvousIP
 if [[ $worker_count -gt 0 ]]; then
-
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+    cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
 rendezvousIP: ${RENDEZVOUS_IP}
 EOF
 
@@ -150,7 +145,7 @@ EOF
 EOF
     fi
 
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+    cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
     rootDeviceHints:
       deviceName: ${ROOT_DEVICE_NAME}
     networkConfig:
@@ -168,10 +163,8 @@ cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
           ipv6:
             enabled: false
 EOF
-
     if [[ -n $interface_name_2 ]]; then
-
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+        cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
         - name: ${interface_name_2}
           type: ethernet
           state: up
@@ -188,8 +181,7 @@ EOF
 
     fi
     if [[ -n $interface_name_3 ]]; then
-
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+        cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
         - name: ${interface_name_3}
           type: ethernet
           state: up
@@ -203,10 +195,9 @@ cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
           ipv6:
             enabled: false
 EOF
-
     fi
 
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+    cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
       dns-resolver:
         config:
           server:
@@ -214,14 +205,12 @@ cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
 EOF
 
     if [[ -n $DNS_SERVER_02 ]]; then
-
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+        cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
             - ${DNS_SERVER_02}
 EOF
-
     fi
 
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+    cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
           search:
             - ${CLUSTER_NAME}.${BASE_DOMAIN}
       routes:
@@ -231,26 +220,21 @@ cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
             next-hop-interface: ${interface_name_1}
             table-id: ${table_id_1}
 EOF
-
     if [[ -n $interface_name_2 ]]; then
-
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+        cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
           - destination: $destination_2
             next-hop-address: $next_hop_address_2
             next-hop-interface: ${interface_name_2}
             table-id: ${table_id_2}
 EOF
-
     fi
     if [[ -n $interface_name_3 ]]; then
-
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+        cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
           - destination: $destination_3
             next-hop-address: $next_hop_address_3
             next-hop-interface: ${interface_name_3}
             table-id: ${table_id_3}
 EOF
-
     fi
 done
 ```
