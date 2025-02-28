@@ -51,6 +51,7 @@ for node in $NODE_INFO_LIST; do
     ((worker_count++))
   fi
 done
+
 if [[ $worker_count -gt 0 ]]; then
     if [[ -z $RENDEZVOUS_IP ]]; then
         echo "Error: RENDEZVOUS_IP variable is empty. Exiting..."
@@ -62,6 +63,7 @@ fi
 if [[ -d ./$CLUSTER_NAME ]]; then
     rm -Rf ./$CLUSTER_NAME
 fi
+
 if [[ -f ./${CLUSTER_NAME}_agent.x86_64.iso ]]; then
     rm -f ./${CLUSTER_NAME}_agent.x86_64.iso
 fi
@@ -93,7 +95,6 @@ if [[ $worker_count -gt 0 ]]; then
     cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
 rendezvousIP: ${RENDEZVOUS_IP}
 EOF
-
 fi
 
 cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
@@ -178,7 +179,6 @@ EOF
           ipv6:
             enabled: false
 EOF
-
     fi
     if [[ -n $interface_name_3 ]]; then
         cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
@@ -203,7 +203,6 @@ EOF
           server:
             - ${DNS_SERVER_01}
 EOF
-
     if [[ -n $DNS_SERVER_02 ]]; then
         cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
             - ${DNS_SERVER_02}
