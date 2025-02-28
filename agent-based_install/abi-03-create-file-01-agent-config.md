@@ -130,7 +130,7 @@ for nodeinfo in ${NODE_INFO_LIST}; do
     next_hop_address_3=$( echo ${nodeinfo} |awk -F "--" '{print $22}' )
     table_id_3=$(         echo ${nodeinfo} |awk -F "--" '{print $23}' )
 
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+    cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
   - hostname: ${hostname}.${CLUSTER_NAME}.${BASE_DOMAIN}
     role: ${role}
     interfaces:
@@ -138,15 +138,13 @@ cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
         macAddress: ${mac_address_1}
 EOF
     if [[ -n $interface_name_2 ]]; then
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
-
+        cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
       - name: ${interface_name_2}
         macAddress: ${mac_address_2}
 EOF
     fi
     if [[ -n $interface_name_3 ]]; then
-cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
-
+        cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
       - name: ${interface_name_3}
         macAddress: ${mac_address_3}
 EOF
