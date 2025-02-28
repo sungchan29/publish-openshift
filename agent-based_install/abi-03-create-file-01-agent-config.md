@@ -136,6 +136,23 @@ cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
     interfaces:
       - name: ${interface_name_1}
         macAddress: ${mac_address_1}
+EOF
+    if [[ -n $interface_name_2 ]]; then
+cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+
+      - name: ${interface_name_2}
+        macAddress: ${mac_address_2}
+EOF
+    fi
+    if [[ -n $interface_name_3 ]]; then
+cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
+
+      - name: ${interface_name_3}
+        macAddress: ${mac_address_3}
+EOF
+    fi
+
+cat << EOF >> ./${CLUSTER_NAME}/orig/agent-config.yaml
     rootDeviceHints:
       deviceName: ${ROOT_DEVICE_NAME}
     networkConfig:
