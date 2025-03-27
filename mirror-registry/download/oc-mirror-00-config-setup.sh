@@ -38,11 +38,16 @@ EVENTROUTER_IMAGE="registry.redhat.io/openshift-logging/eventrouter-rhel9:v0.4"
 SUPPORT_TOOL_IMAGE="registry.redhat.io/rhel9/support-tools:latest"
 
 ### ----------------------------------------
-### OpenShift Mirror Tool
-### Configurations for mirroring OpenShift release images and operators
-### Supports mirroring of OpenShift release images and Operator Lifecycle Manager (OLM) operators
+### OpenShift Client Tool
 ### ----------------------------------------
+### Tarball file names for oc-mirror on RHEL8 and RHEL9
+OPENSHIFT_CLIENT_DOWNLOAD_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest"
+OPENSHIFT_CLIENT_RHEL8_FILE="openshift-client-linux-amd64-rhel8.tar.gz"
+OPENSHIFT_CLIENT_RHEL9_FILE="openshift-client-linux-amd64-rhel9.tar.gz"
 
+### ----------------------------------------
+### OpenShift Mirror Tool
+### ----------------------------------------
 ### Tarball file names for oc-mirror on RHEL8 and RHEL9
 ### Defines the tarball filenames for the oc-mirror tool, differing by RHEL version (RHEL8 uses gz, RHEL9 uses rhel9-specific tar)
 OC_MIRROR_DOWNLOAD_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable"
