@@ -3,7 +3,7 @@
 ### Source the configuration file and validate its existence
 config_file="$(dirname "$(realpath "$0")")/oc-mirror-00-config-setup.sh"
 if [[ ! -f "$config_file" ]]; then
-    echo "[ERROR] Cannot access 'config_file' at $config_file. File or directory does not exist. Exiting..."
+    echo "[ERROR] Cannot access 'config_file'. File or directory does not exist. Exiting..."
     exit 1
 fi
 source "$config_file"
