@@ -1,13 +1,13 @@
 #!/bin/bash
 
 ### Source the configuration file and validate its existence
-### This will load variables defined in the configuration script `oc-mirror-00-config-setup.sh`
+### This will load variables defined in the configuration script 'oc-mirror-00-config-setup.sh'
 config_file="$(dirname "$(realpath "$0")")/oc-mirror-00-config-setup.sh"
 if [[ ! -f "$config_file" ]]; then
     echo "ERROR: Cannot access '$config_file'. File or directory does not exist. Exiting..."
     exit 1
 fi
-source "$config_file"  # Import configuration variables from the setup script
+source "$config_file"
 
 echo "-----------------------------"
 echo "                   WORK_DIR : $WORK_DIR"
