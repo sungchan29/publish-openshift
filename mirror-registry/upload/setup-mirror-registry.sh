@@ -8,18 +8,14 @@ OCP_VERSIONS="4.17.9--4.17.20"
 ### Examples include 'redhat', 'certified', 'community'; empty by default to set later
 OLM_CATALOGS="redhat--certified"
 
-### Mirror registry details for storing images
 ### MIRROR_REGISTRY is the target registry URL where images will be pushed
 MIRROR_REGISTRY="nexus.cloudpang.tistory.disconnected:5000"
 ### MIRROR_REGISTRY_USERNAME is the username for logging into the registry
 MIRROR_REGISTRY_USERNAME="admin"
 
 ### Directory paths for OCP tools and images
-### OCP_TOOL_DIR: Directory containing OCP tool binaries (e.g., oc-mirror.tar.gz)
 OCP_TOOL_DIR="/root/sungchan-desk/ocp4/disconnected/4.17.9--4.17.20/export/tool-binaries"
-### OCP_TOOL_IMAGES_DIR: Directory containing additional OCP tool images
 OCP_TOOL_IMAGES_DIR="/root/sungchan-desk/ocp4/disconnected/4.17.9--4.17.20/export/additional-images"
-### OC_MIRROR_IMAGES_DIR: Directory for oc-mirror working files and images
 OC_MIRROR_IMAGES_DIR="/root/sungchan-desk/ocp4/disconnected/4.17.9--4.17.20/export/oc-mirror"
 
 ### Strategy for mirroring
@@ -209,7 +205,7 @@ case "$image_type" in
 
                 oc_mirror_work_dir="$OC_MIRROR_IMAGES_DIR/ocp/$MIRROR_STRATEGY/$version_string"
                 imageset_config_file="$oc_mirror_work_dir/imageset-config-${version_string}.yaml"
-
+                
                 echo "[INFO]: Starting incremental mirroring for OCP versions: $version_string"
                 mirror_images "$imageset_config_file" "$oc_mirror_work_dir" "$OCP_REPOSITORY"
                 echo "[INFO]: Incremental mirroring completed for OCP versions: $version_string"
@@ -219,7 +215,7 @@ case "$image_type" in
             for major_minor_patch in "${versions[@]}"; do
                 oc_mirror_work_dir="$OC_MIRROR_IMAGES_DIR/ocp/$MIRROR_STRATEGY/$major_minor_patch"
                 imageset_config_file="$oc_mirror_work_dir/imageset-config.yaml"
-
+                
                 echo "[INFO]: Starting individual mirroring for OCP version: $major_minor_patch"
                 mirror_images "$imageset_config_file" "$oc_mirror_work_dir" "$OCP_REPOSITORY"
                 echo "[INFO]: Individual mirroring completed for OCP version: $major_minor_patch"
