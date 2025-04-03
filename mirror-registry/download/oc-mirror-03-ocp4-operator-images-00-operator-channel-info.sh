@@ -67,8 +67,6 @@ done <<< "$channels"
 
 ### Find versions in default channel
 default_versions=$(get_versions_for_channel "$default_channel")
-mapfile -t default_version_array <<< "$default_versions"
-default_version_set=$(printf '%s\n' "${default_version_array[@]}" | sort -Vr -u | tr '\n' ' ' | sed 's/ $//')
 
 ### Check for other channels with the same version list as default channel
 echo ""
@@ -77,8 +75,7 @@ declare -A identical_channels
 while IFS=$'\n' read -r channel; do
     if [[ "$channel" != "$default_channel" ]]; then
         channel_versions=$(get_versions_for_channel "$channel")
-        channel_version_set=$(echo "$channel_versions" | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
-        if [[ "$channel_version_set" == "$default_version_set" ]]; then
+        if [[ "$channel_versions" == "$default_versions" ]]; then
             identical_channels["$channel"]=1
         fi
     fi
