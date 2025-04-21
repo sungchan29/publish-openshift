@@ -125,43 +125,31 @@ validate_ssh_key() {
     fi
 }
 
-validate_ipv4() {
+validate_role() {
     local var_name="$1"
     local value="$2"
     local context="$3"
-    local allow_zero="${4:-false}"
+
+    if [[ -z "$value" ]] || ! [[ "$value" =~ ^(master|worker)$ ]]; then
+        echo "[ERROR] Invalid $var_name in context: $context"
+        echo "[ERROR] Expected 'master' or 'worker', got: '$value'"
+        exit 1
+    fi
+}
+
+validate_domain() {
+    local var_name="$1"
+    local value="$2"
+    local context="$3"
 
     if [[ -z "$value" ]]; then
         echo "[ERROR] $var_name is missing in context: $context"
         exit 1
     fi
 
-    if ! [[ "$value" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]]; then
+    if ! echo "$value" | grep -qE '^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'; then
         echo "[ERROR] Invalid $var_name in context: $context"
-        echo "[ERROR] Expected IPv4 format (XXX.XXX.XXX.XXX), got: '$value'"
-        exit 1
-    fi
-
-    local oct1="${BASH_REMATCH[1]}"
-    local oct2="${BASH_REMATCH[2]}"
-    local oct3="${BASH_REMATCH[3]}"
-    local oct4="${BASH_REMATCH[4]}"
-
-    if [[ "$oct1" =~ ^0[0-9]+ || "$oct2" =~ ^0[0-9]+ || "$oct3" =~ ^0[0-9]+ || "$oct4" =~ ^0[0-9]+ ]]; then
-        echo "[ERROR] Invalid $var_name in context: $context"
-        echo "[ERROR] IP octets must not have leading zeros, got: '$value'"
-        exit 1
-    fi
-
-    if [[ $oct1 -gt 255 || $oct2 -gt 255 || $oct3 -gt 255 || $oct4 -gt 255 ]]; then
-        echo "[ERROR] Invalid $var_name in context: $context"
-        echo "[ERROR] Each octet must be between 0 and 255, got: '$value'"
-        exit 1
-    fi
-
-    if [[ ! "$allow_zero" == "true" && $oct1 -eq 0 && $oct2 -eq 0 && $oct3 -eq 0 && $oct4 -eq 0 ]]; then
-        echo "[ERROR] Invalid $var_name in context: $context"
-        echo "[ERROR] IP address 0.0.0.0 is not allowed, got: '$value'"
+        echo "[ERROR] Expected domain format (RFC 1123), got: '$value'"
         exit 1
     fi
 }
@@ -174,43 +162,8 @@ validate_ip_or_host_regex() {
     fi
 }
 
-validate_mac() {
-    local var_name="$1"
-    local value="$2"
-    local context="$3"
-
-    if [[ -z "$value" ]]; then
-        echo "[ERROR] $var_name is missing in context: $context"
-        exit 1
-    fi
-
-    if ! [[ "$value" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]]; then
-        echo "[ERROR] Invalid $var_name in context: $context"
-        echo "[ERROR] Expected MAC address format (XX:XX:XX:XX:XX:XX), got: '$value'"
-        exit 1
-    fi
-}
-
-validate_prefix() {
-    local var_name="$1"
-    local value="$2"
-    local context="$3"
-
-    if [[ -z "$value" ]]; then
-        echo "[ERROR] $var_name is missing in context: $context"
-        exit 1
-    fi
-
-    if ! [[ "$value" =~ ^[0-9]+$ ]] || [[ $value -gt 32 ]]; then
-        echo "[ERROR] Invalid $var_name in context: $context"
-        echo "[ERROR] Expected a number between 0 and 32, got: '$value'"
-        exit 1
-    fi
-}
-#!/bin/bash
-
-# Core IPv4 validation function
-validate_ipv4_core() {
+### Core IPv4 validation function
+validate_ipv4() {
     local var_name="$1"
     local value="$2"
     local context="$3"
@@ -288,14 +241,36 @@ validate_cidr() {
     fi
 }
 
-validate_role() {
+validate_mac() {
     local var_name="$1"
     local value="$2"
     local context="$3"
 
-    if [[ -z "$value" ]] || ! [[ "$value" =~ ^(master|worker)$ ]]; then
+    if [[ -z "$value" ]]; then
+        echo "[ERROR] $var_name is missing in context: $context"
+        exit 1
+    fi
+
+    if ! [[ "$value" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]]; then
         echo "[ERROR] Invalid $var_name in context: $context"
-        echo "[ERROR] Expected 'master' or 'worker', got: '$value'"
+        echo "[ERROR] Expected MAC address format (XX:XX:XX:XX:XX:XX), got: '$value'"
+        exit 1
+    fi
+}
+
+validate_prefix() {
+    local var_name="$1"
+    local value="$2"
+    local context="$3"
+
+    if [[ -z "$value" ]]; then
+        echo "[ERROR] $var_name is missing in context: $context"
+        exit 1
+    fi
+
+    if ! [[ "$value" =~ ^[0-9]+$ ]] || [[ $value -gt 32 ]]; then
+        echo "[ERROR] Invalid $var_name in context: $context"
+        echo "[ERROR] Expected a number between 0 and 32, got: '$value'"
         exit 1
     fi
 }
@@ -311,24 +286,6 @@ validate_table_id() {
         exit 1
     fi
 }
-
-validate_domain() {
-    local var_name="$1"
-    local value="$2"
-    local context="$3"
-
-    if [[ -z "$value" ]]; then
-        echo "[ERROR] $var_name is missing in context: $context"
-        exit 1
-    fi
-
-    if ! echo "$value" | grep -qE '^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'; then
-        echo "[ERROR] Invalid $var_name in context: $context"
-        echo "[ERROR] Expected domain format (RFC 1123), got: '$value'"
-        exit 1
-    fi
-}
-
 
 ### Validate Input Parameters
 validate_non_empty "CLUSTER_NAME" "$CLUSTER_NAME"
