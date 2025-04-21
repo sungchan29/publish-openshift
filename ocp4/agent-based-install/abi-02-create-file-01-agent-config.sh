@@ -64,7 +64,6 @@ fi
 
 ### Create agent-config.yaml
 cat << EOF > ./$CLUSTER_NAME/orig/agent-config.yaml
----
 apiVersion: v1alpha1
 kind: AgentConfig
 metadata:
@@ -83,7 +82,7 @@ hosts:
 EOF
 
 ### Node information validation and YAML generation
-max_interfaces=3
+max_interfaces=${NODE_INTERFACE_MAX_NUM:-3}
 
 for nodeinfo in "${NODE_INFO_LIST[@]}"; do
     # Convert separators and split

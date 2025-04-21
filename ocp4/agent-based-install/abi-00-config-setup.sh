@@ -53,6 +53,8 @@ NODE_INFO_LIST=(
     "worker--worker01--enp1s0--52:54:00:7d:e1:24--11.119.120.124--24--0.0.0.0/0--11.119.120.28--254"
 )
 
+NODE_INTERFACE_MAX_NUM=3
+
 ### MachineConfigPool
 NODE_ROLE_SELECTORS="infra--infra01|infra02"
 
