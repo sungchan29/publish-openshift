@@ -270,9 +270,8 @@ validate_prefix() {
         exit 1
     fi
 
-    if ! [[ "$value" =~ ^[0-9]+$ ]] || [[ $value -gt 32 ]]; then
+    if ! [[ "$value" =~ ^[0-9]+$ ]]; then
         echo "[ERROR] Invalid $var_name in context: $context"
-        echo "[ERROR] Expected a number between 0 and 32, got: '$value'"
         exit 1
     fi
 }
