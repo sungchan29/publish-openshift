@@ -149,7 +149,7 @@ validate_domain() {
         exit 1
     fi
 
-    if ! echo "$value" | grep -qE '^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'; then
+    if ! echo "$value" | grep -qE '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$'; then
         echo "[ERROR] Invalid $var_name in context: $context"
         echo "[ERROR] Expected domain format (RFC 1123), got: '$value'"
         exit 1
@@ -158,7 +158,7 @@ validate_domain() {
 
 validate_ip_or_host_regex() {
     local ip_or_host="$1"
-    if ! echo "$ip_or_host" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}$|^[a-zA-Z0-9.-]+$'; then
+    if ! echo "$ip_or_host" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}$|^[a-z0-9.-]+$'; then
         echo "[ERROR] Invalid IP or Hostname: '$ip_or_host'. Exiting..."
         exit 1
     fi
