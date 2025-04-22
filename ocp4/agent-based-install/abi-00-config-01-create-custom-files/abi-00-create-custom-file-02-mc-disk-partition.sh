@@ -62,7 +62,7 @@ storage:
 EOF
             ./butane $BUTANE_BU_DIR/98-${role}-${PARTITION_LABEL}.bu -o $ADDITIONAL_MANIFEST/98-${role}-${PARTITION_LABEL}.yaml
         done
-    else
+    elif [[ "$ADD_DEVICE_TYPE" == "DIRECT" ]]; then
         for role in "master" "worker"; do          
 cat << EOF > $BUTANE_BU_DIR/98-${role}-${PARTITION_LABEL}.bu
 variant: openshift
