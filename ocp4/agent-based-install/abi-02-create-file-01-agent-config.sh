@@ -130,6 +130,13 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
         eval "destination_$i=\$destination"
         eval "next_hop_address_$i=\$next_hop_address"
         eval "table_id_$i=\$table_id"
+
+        unset interface_name
+        unset ip_address
+        unset prefix_length
+        unset destination
+        unset next_hope_address
+        unset table_id
     done
 
     ### Generate YAML for node
