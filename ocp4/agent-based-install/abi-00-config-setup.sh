@@ -228,7 +228,7 @@ validate_cidr() {
         local mask="${BASH_REMATCH[5]}"
 
         ### Validate IP address
-        validate_ipv4_core "$var_name" "$ip" "$context" true
+        validate_ipv4 "$var_name" "$ip" "$context" true
 
         ### Validate mask (0-32)
         if [[ $mask -gt 32 ]]; then
@@ -312,12 +312,37 @@ if [[ -f "$MIRROR_REGISTRY_TRUST_FILE" ]]; then
     validate_non_empty "MIRROR_REGISTRY"          "$MIRROR_REGISTRY"
     validate_non_empty "MIRROR_REGISTRY_USERNAME" "$MIRROR_REGISTRY_USERNAME"
     validate_non_empty "MIRROR_REGISTRY_PASSWORD" "$MIRROR_REGISTRY_PASSWORD"
-    if [[ -f "$PULL_SECRET" ]]; then
-        echo "[WARN] Pull secret '$PULL_SECRET' exists. Overwriting..."
-    fi
+
     auth_info="${MIRROR_REGISTRY_USERNAME}:${MIRROR_REGISTRY_PASSWORD}"
     auth_encoding=$(echo -n "$auth_info" | base64 -w0)
     pull_secret="{\"auths\":{\"${MIRROR_REGISTRY}\":{\"auth\":\"${auth_encoding}\"}}}"
-    echo "$pull_secret" > "$PULL_SECRET"
-    echo "[INFO] Created pull secret at '$PULL_SECRET'"
+
+    # Check if pull secret exists and matches
+    should_write=1
+    message="[INFO] Created pull secret at '$PULL_SECRET'"
+    if [[ -f "$PULL_SECRET" ]]; then
+        if command -v jq >/dev/null 2>&1; then
+            existing_auth=$(jq -r ".auths.\"${MIRROR_REGISTRY}\".auth // \"\"" "$PULL_SECRET" 2>/dev/null || echo "")
+            if [[ "$existing_auth" == "$auth_encoding" ]]; then
+                should_write=0
+                message="[INFO] Pull secret '$PULL_SECRET' is up-to-date for '$MIRROR_REGISTRY'. Skipping..."
+            else
+                message="[WARN] Pull secret '$PULL_SECRET' exists but does not match '$MIRROR_REGISTRY'. Overwriting..."
+            fi
+        else
+            message="[WARN] jq not found. Cannot verify pull secret content. Overwriting '$PULL_SECRET'..."
+        fi
+    fi
+
+    # Write pull secret if needed
+    if [[ $should_write -eq 1 ]]; then
+        echo "$pull_secret" > "$PULL_SECRET" || {
+            echo "[ERROR] Failed to write pull secret to '$PULL_SECRET'. Exiting..."
+            exit 1
+        }
+    fi
+
+    # Output message and pull secret content
+    echo "$message"
+    echo ""
 fi
