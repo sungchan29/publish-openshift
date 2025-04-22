@@ -30,18 +30,6 @@ mkdir -p "./$CLUSTER_NAME/orig" || {
     exit 1
 }
 
-validate_non_empty "ROOT_DEVICE_NAME" "$ROOT_DEVICE_NAME"
-validate_ip_or_host_regex "$NTP_SERVER_01"
-if [[ -n "$NTP_SERVER_02" ]]; then
-    validate_ip_or_host_regex "$NTP_SERVER_02"
-fi
-validate_ip_or_host_regex "$DNS_SERVER_01"
-if [[ -n "$DNS_SERVER_02" ]]; then
-    validate_ip_or_host_regex "$DNS_SERVER_02"
-fi
-
-validate_ip_or_host_regex "$RENDEZVOUS_IP"
-
 ### Count master and worker nodes
 worker_count=0
 master_count=0
@@ -85,6 +73,7 @@ EOF
 max_interfaces=${NODE_INTERFACE_MAX_NUM:-3}
 
 for nodeinfo in "${NODE_INFO_LIST[@]}"; do
+    echo "[INFO] Processing node: $nodeinfo"
     # Convert separators and split
     IFS='|' read -r -a fields <<< "$(echo "$nodeinfo" | sed 's/--/|/g')"
     role="${fields[0]}"
@@ -93,6 +82,11 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
 
     # Validate role and hostname
     validate_role "role" "$role" "$context"
+    echo "[INFO] Validated role: $role, hostname: $hostname"
+
+    # Initialize arrays for interface data
+    declare -A interfaces
+    interface_count=0
 
     # Validate interfaces
     for ((i=1; i<=max_interfaces; i++)); do
@@ -114,30 +108,28 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
             break
         fi
 
+        echo "[INFO] Validating interface $i for $hostname: $interface_name"
         # Validate interface fields
-        validate_mac      "mac_address_$i"      "$mac_address"      "$context"
-        validate_ipv4     "ip_address_$i"       "$ip_address"       "$context"
-        validate_prefix   "prefix_length_$i"    "$prefix_length"    "$context"
-        validate_cidr     "destination_$i"      "$destination"      "$context"
-        validate_ipv4     "next_hop_address_$i" "$next_hop_address" "$context"
-        validate_table_id "table_id_$i"         "$table_id"         "$context"
+        validate_mac      "mac_address_$i"      "$mac_address"      "$context" || exit 1
+        validate_ipv4     "ip_address_$i"       "$ip_address"       "$context" || exit 1
+        validate_prefix   "prefix_length_$i"    "$prefix_length"    "$context" || exit 1
+        validate_cidr     "destination_$i"      "$destination"      "$context" || exit 1
+        validate_ipv4     "next_hop_address_$i" "$next_hop_address" "$context" || exit 1
+        validate_table_id "table_id_$i"         "$table_id"         "$context" || exit 1
 
-        # Store interface data for YAML
-        eval "interface_name_$i=\$interface_name"
-        eval "mac_address_$i=\$mac_address"
-        eval "ip_address_$i=\$ip_address"
-        eval "prefix_length_$i=\$prefix_length"
-        eval "destination_$i=\$destination"
-        eval "next_hop_address_$i=\$next_hop_address"
-        eval "table_id_$i=\$table_id"
-
-        unset interface_name
-        unset ip_address
-        unset prefix_length
-        unset destination
-        unset next_hope_address
-        unset table_id
+        # Store interface data in array
+        interfaces["name_$i"]="$interface_name"
+        interfaces["mac_$i"]="$mac_address"
+        interfaces["ip_$i"]="$ip_address"
+        interfaces["prefix_$i"]="$prefix_length"
+        interfaces["dest_$i"]="$destination"
+        interfaces["next_hop_$i"]="$next_hop_address"
+        interfaces["table_$i"]="$table_id"
+        ((interface_count++))
+        echo "[INFO] Interface $i stored: $interface_name"
     done
+
+    echo "[INFO] Total interfaces for $hostname: $interface_count"
 
     ### Generate YAML for node
     cat << EOF >> "./$CLUSTER_NAME/orig/agent-config.yaml"
@@ -147,11 +139,11 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
       deviceName: $ROOT_DEVICE_NAME
     interfaces:
 EOF
-    for ((i=1; i<=max_interfaces; i++)); do
-        if [[ -n "$(eval echo \$interface_name_$i)" ]]; then
+    for ((i=1; i<=interface_count; i++)); do
+        if [[ -n "${interfaces[name_$i]}" ]]; then
             cat << EOF >> "./$CLUSTER_NAME/orig/agent-config.yaml"
-      - name: $(eval echo \$interface_name_$i)
-        macAddress: $(eval echo \$mac_address_$i)
+      - name: ${interfaces[name_$i]}
+        macAddress: ${interfaces[mac_$i]}
 EOF
         fi
     done
@@ -160,18 +152,18 @@ EOF
     networkConfig:
       interfaces:
 EOF
-    for ((i=1; i<=max_interfaces; i++)); do
-        if [[ -n "$(eval echo \$interface_name_$i)" ]]; then
+    for ((i=1; i<=interface_count; i++)); do
+        if [[ -n "${interfaces[name_$i]}" ]]; then
             cat << EOF >> "./$CLUSTER_NAME/orig/agent-config.yaml"
-        - name: $(eval echo \$interface_name_$i)
+        - name: ${interfaces[name_$i]}
           type: ethernet
           state: up
-          mac-address: $(eval echo \$mac_address_$i)
+          mac-address: ${interfaces[mac_$i]}
           ipv4:
             enabled: true
             address:
-              - ip: $(eval echo \$ip_address_$i)
-                prefix-length: $(eval echo \$prefix_length_$i)
+              - ip: ${interfaces[ip_$i]}
+                prefix-length: ${interfaces[prefix_$i]}
             dhcp: false
           ipv6:
             enabled: false
@@ -196,21 +188,24 @@ EOF
       routes:
         config:
 EOF
-    for ((i=1; i<=max_interfaces; i++)); do
-        if [[ -n "$(eval echo \$interface_name_$i)" ]]; then
+    for ((i=1; i<=interface_count; i++)); do
+        if [[ -n "${interfaces[name_$i]}" ]]; then
             cat << EOF >> "./$CLUSTER_NAME/orig/agent-config.yaml"
-          - destination: $(eval echo \$destination_$i)
-            next-hop-address: $(eval echo \$next_hop_address_$i)
-            next-hop-interface: $(eval echo \$interface_name_$i)
-            table-id: $(eval echo \$table_id_$i)
+          - destination: ${interfaces[dest_$i]}
+            next-hop-address: ${interfaces[next_hop_$i]}
+            next-hop-interface: ${interfaces[name_$i]}
+            table-id: ${interfaces[table_$i]}
 EOF
         fi
     done
+
+    # Clean up interfaces array for the next host
+    unset interfaces
 done
 
 ### Check if validation and YAML generation passed
 if [[ $? -eq 0 ]]; then
-    echo "INFO: Node info validated and agent-config.yaml generated successfully"
+    echo "[INFO] Node info validated and agent-config.yaml generated successfully"
 else
     echo "[ERROR] Validation or YAML generation failed"
     exit 1
