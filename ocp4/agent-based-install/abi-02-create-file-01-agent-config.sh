@@ -73,7 +73,6 @@ EOF
 max_interfaces=${NODE_INTERFACE_MAX_NUM:-3}
 
 for nodeinfo in "${NODE_INFO_LIST[@]}"; do
-    echo "[INFO] Processing node: $nodeinfo"
     # Convert separators and split
     IFS='|' read -r -a fields <<< "$(echo "$nodeinfo" | sed 's/--/|/g')"
     role="${fields[0]}"
@@ -82,7 +81,6 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
 
     # Validate role and hostname
     validate_role "role" "$role" "$context"
-    echo "[INFO] Validated role: $role, hostname: $hostname"
 
     # Initialize arrays for interface data
     declare -A interfaces
@@ -108,7 +106,6 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
             break
         fi
 
-        echo "[INFO] Validating interface $i for $hostname: $interface_name"
         # Validate interface fields
         validate_mac      "mac_address_$i"      "$mac_address"      "$context" || exit 1
         validate_ipv4     "ip_address_$i"       "$ip_address"       "$context" || exit 1
@@ -126,10 +123,7 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
         interfaces["next_hop_$i"]="$next_hop_address"
         interfaces["table_$i"]="$table_id"
         ((interface_count++))
-        echo "[INFO] Interface $i stored: $interface_name"
     done
-
-    echo "[INFO] Total interfaces for $hostname: $interface_count"
 
     ### Generate YAML for node
     cat << EOF >> "./$CLUSTER_NAME/orig/agent-config.yaml"
