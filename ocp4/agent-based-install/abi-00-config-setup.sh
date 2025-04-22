@@ -71,8 +71,8 @@ INGRESS_CUSTOM_TLS_CERT="$CLUSTER_TLS_CERT"
 ROOT_DEVICE_NAME="/dev/disk/by-path/pci-0000:04:00.0"
 ADD_DEVICE_NAME=""
 FILESYSTEM_PATH="/var/lib/containers"
-ADD_DEVICE_TYPE=""
-ADD_DEVICE_PARTITION_START_MIB=""
+ADD_DEVICE_TYPE=""                   # "DIRECT" or "PARTITION"
+ADD_DEVICE_PARTITION_START_MIB=""    # If ROOT_DEVICE_NAME equals ADD_DEVICE_NAME, set to 25000 MiB (starts partition at 25GB for /var/lib/containers, typically partition 5).
 
 ### Network Configuration
 MACHINE_NETWORK="11.119.120.0/24"
@@ -293,6 +293,11 @@ validate_non_empty "CLUSTER_NAME" "$CLUSTER_NAME"
 validate_non_empty "BASE_DOMAIN"  "$BASE_DOMAIN"
 
 ### Disk Configuration Logic
+ADD_DEVICE_TYPE="${ADD_DEVICE_TYPE:-"DIRECT"}"
+if [[ "$ADD_DEVICE_TYPE" != "DIRECT" && "$ADD_DEVICE_TYPE" != "PARTITION" ]]; then
+    echo "[ERROR] Invalid ADD_DEVICE_TYPE: '$ADD_DEVICE_TYPE'. Must be 'DIRECT' or 'PARTITION'. Exiting..."
+    exit 1
+fi
 if [[ "$ROOT_DEVICE_NAME" = "$ADD_DEVICE_NAME" ]]; then
     ADD_DEVICE_TYPE="PARTITION"
     PARTITION_START_MIB="${ADD_DEVICE_PARTITION_START_MIB:-25000}"
