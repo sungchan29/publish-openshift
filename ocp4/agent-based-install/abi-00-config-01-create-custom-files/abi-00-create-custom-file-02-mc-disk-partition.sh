@@ -27,24 +27,15 @@ butane_ocp_version="$(echo "$OCP_VERSION" | awk '{print $NF}' | sed 's/\.[0-9]*$
 ###   https://docs.openshift.com/container-platform/4.16/installing/installing_bare_metal/installing-bare-metal.html?extIdCarryOver=true&sc_cid=701f2000001OH6kAAG#installation-user-infra-machines-advanced_disk_installing-bare-metal
 if [[ -n "$ADD_DEVICE_NAME" ]]; then
     ### Validate required variables
-    unset required_vars
-    declare -a required_vars=("PARTITION_LABEL" "FILESYSTEM_PATH" "BUTANE_BU_DIR" "ADDITIONAL_MANIFEST")
-    for var in "${required_vars[@]}"; do
-        if [[ -z "${!var}" ]]; then
-            echo "Error: $var is not defined or empty in $config_file."
-            exit 1
-        fi
-    done
+    validate_non_empty "PARTITION_LABEL"     "$PARTITION_LABEL"
+    validate_non_empty "FILESYSTEM_PATH"     "$FILESYSTEM_PATH"
+    validate_non_empty "BUTANE_BU_DIR"       "$BUTANE_BU_DIR"
+    validate_non_empty "ADDITIONAL_MANIFEST" "$ADDITIONAL_MANIFEST"
 
     if [[ "$ADD_DEVICE_TYPE" == "PARTITION" ]]; then
-        unset required_vars
-        declare -a required_vars=("PARTITION_START_MIB" "PARTITION_SIZE_MIB" "PARTITION_NUMBER")
-        for var in "${required_vars[@]}"; do
-            if [[ -z "${!var}" ]]; then
-                echo "Error: $var is not defined or empty in $config_file."
-                exit 1
-            fi
-        done
+        validate_non_empty "PARTITION_START_MIB" "$PARTITION_START_MIB"
+        validate_non_empty "PARTITION_SIZE_MIB"  "$PARTITION_SIZE_MIB"
+        validate_non_empty "PARTITION_NUMBER"    "$PARTITION_NUMBER"
 
         for role in "master" "worker"; do    
 cat << EOF > $BUTANE_BU_DIR/98-${role}-${PARTITION_LABEL}.bu
