@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Enable strict mode
+### Enable strict mode
 set -euo pipefail
 
-# Get current script name
+### Get current script name
 script_name=$(basename "$0")
 
 ### Source the configuration file and validate its existence

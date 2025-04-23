@@ -1,6 +1,7 @@
 #!/bin/bash
 
-export PATH=$PATH:$(pwd)
+### Enable strict mode
+set -euo pipefail
 
 ### Define the log file name for the script.
 log_file="$(basename "$0" .sh).log"

@@ -1,8 +1,6 @@
 #!/bin/bash
 
-export PATH=$PATH:$(pwd)
-
-# Enable strict mode
+### Enable strict mode
 set -euo pipefail
 
 ### Source the configuration file and validate its existence

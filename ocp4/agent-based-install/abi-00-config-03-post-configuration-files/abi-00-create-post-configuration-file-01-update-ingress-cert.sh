@@ -3,8 +3,6 @@
 # Enable strict mode
 set -euo pipefail
 
-export PATH=$PATH:$(pwd)
-
 ### Source the configuration file and validate its existence
 config_file="$(dirname "$(realpath "$0")")/../abi-00-config-setup.sh"
 if [[ ! -f "$config_file" ]]; then

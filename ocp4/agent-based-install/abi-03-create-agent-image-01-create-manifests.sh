@@ -1,7 +1,5 @@
 #!/bin/bash
 
-export PATH=$PATH:$(pwd)
-
 # Enable strict mode
 set -euo pipefail
 

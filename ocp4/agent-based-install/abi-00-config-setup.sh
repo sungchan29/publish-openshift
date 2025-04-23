@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PATH=$PATH:$(pwd)
+
 ### OpenShift Version
 OCP_VERSION="4.17.23"
 

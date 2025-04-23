@@ -1,5 +1,8 @@
 #!/bin/bash
 
+### Enable strict mode
+set -euo pipefail
+
 ### Source the configuration file
 config_file="$(dirname "$(realpath "$0")")/abi-00-config-setup.sh"
 if [[ ! -f "$config_file" ]]; then
