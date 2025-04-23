@@ -3,220 +3,174 @@
 ### Enable strict mode
 set -euo pipefail
 
-### Get current script name
-script_name=$(basename "$0")
-
-### Source the configuration file and validate its existence
-config_file="$(dirname "$(realpath "$0")")/abi-00-config-setup.sh"
-if [[ ! -f "$config_file" ]]; then
-    echo "[ERROR] Cannot access '$config_file'. File or directory does not exist. Exiting..."
+### Source the configuration file
+CONFIG_FILE="$(dirname "$(realpath "$0")")/abi-00-config-setup.sh"
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "[ERROR] Cannot access '$CONFIG_FILE'. File or directory does not exist. Exiting..."
     exit 1
 fi
-if ! source "$config_file"; then
-    echo "[ERROR] Failed to source '$config_file'. Check file syntax or permissions. Exiting..."
+if ! source "$CONFIG_FILE"; then
+    echo "[ERROR] Failed to source '$CONFIG_FILE'. Check file syntax or permissions."
     exit 1
 fi
 
-### Define variables
-VM_NETWORK_01="bridge=bridge0,model=virtio"
-VM_IMAGES_PATH="/var/lib/libvirt/images"
-RHCOS_AGENT_ISO_FILE="/var/lib/libvirt/images/${CLUSTER_NAME}-v${OCP_VERSION}_agent.x86_64.iso"
-ISO_FILE="${CLUSTER_NAME}-v${OCP_VERSION}_agent.x86_64.iso"
-SSH_USER="${SSH_USER:-root}"
-SSH_OPTIONS="-o StrictHostKeyChecking=no -o ConnectTimeout=10"
+### VM_INFO_LIST definition
+### Format: host--name--cpu--memory--root_disk--add_disk
+VM_INFO_LIST=(
+    "localhost--sno--16--32768--100--30"
+)
 
-VM_INFO_LIST="\
-thinkstation--master01--8--16384 \
-thinkstation--master02--8--16384 \
-thinkstation--master03--8--16384 \
-localhost--infra01--8--8192 \
-localhost--infra02--8--8192 \
-localhost--worker01--8--8192 \
-"
+### Function to extract MAC addresses for a given hostname from NODE_INFO_LIST
+get_mac_addresses() {
+    local hostname="$1"
+    local mac_addresses=()
+    local context="Node $hostname"
 
-### Validate source ISO file
-echo "[INFO] Checking source ISO file: $ISO_FILE..."
-if [[ ! -f "$ISO_FILE" ]]; then
-    echo "[ERROR] Source ISO file $ISO_FILE does not exist. Exiting..."
-    exit 1
-fi
+    for nodeinfo in "${NODE_INFO_LIST[@]}"; do
+        local fields
+        IFS='|' read -r -a fields <<< "$(echo "$nodeinfo" | sed 's/--/|/g')"
+        local node_hostname="${fields[1]}"
 
-### Extract unique hosts
-echo "[INFO] Extracting unique hosts from VM_INFO_LIST..."
-hosts=$(echo "$VM_INFO_LIST" | tr -s ' ' '\n' | awk -F "--" '{print $1}' | sort -u)
-if [[ -z "$hosts" ]]; then
-    echo "[ERROR] No hosts found in VM_INFO_LIST. Exiting..."
-    exit 1
-fi
-
-### Prepare ISO files on each hypervisor
-for host in $hosts; do
-    echo "[INFO] Processing hypervisor: $host..."
-
-    if [[ "$host" == "localhost" ]]; then
-        qemu_connect="qemu:///system"
-
-        # List directory
-        echo "[INFO] Listing directory on $host: $VM_IMAGES_PATH..."
-        ls -al "$VM_IMAGES_PATH"
-        echo ""
-
-        # Remove existing ISO
-        if [[ -f "$VM_IMAGES_PATH/$ISO_FILE" ]]; then
-            echo "[INFO] Removing existing ISO on $host: $VM_IMAGES_PATH/$ISO_FILE..."
-            rm -f "$VM_IMAGES_PATH/$ISO_FILE"
-            echo ""
-
-            echo "[INFO] Listing directory on $host: $VM_IMAGES_PATH..."
-            ls -al "$VM_IMAGES_PATH"
-            echo ""
+        if [[ "$node_hostname" == "$hostname" ]]; then
+            for ((i=1; i<=NODE_INTERFACE_MAX_NUM; i++)); do
+                local offset=$(( (i-1)*7 + 3 ))
+                local mac_address="${fields[$offset]:-}"
+                if [[ -n "$mac_address" ]]; then
+                    validate_mac "mac_address_$i" "$mac_address" "$context"
+                    mac_addresses+=("$mac_address")
+                else
+                    break
+                fi
+            done
+            break
         fi
+    done
 
-        # Copy new ISO
-        echo "[INFO] Copying ISO to $host: $VM_IMAGES_PATH..."
-        if ! cp "$ISO_FILE" "$VM_IMAGES_PATH/"; then
-            echo "[ERROR] Failed to copy ISO to $VM_IMAGES_PATH on $host. Exiting..."
-            exit 1
-        fi
-        echo "[INFO] Successfully copied ISO to $VM_IMAGES_PATH on $host."
-    else
-        qemu_connect="qemu+ssh://${SSH_USER}@${host}/system"
-
-        # Test SSH connection
-        echo "[INFO] Testing SSH connection to $host..."
-        if ! ssh $SSH_OPTIONS "$SSH_USER@$host" exit 2>/dev/null; then
-            echo "[ERROR] Failed to connect to $host via SSH. Exiting..."
-            exit 1
-        fi
-
-        # Test libvirt connection
-        echo "[INFO] Testing libvirt connection to $qemu_connect..."
-        if ! virsh -c "$qemu_connect" list >/dev/null 2>&1; then
-            echo "[ERROR] Failed to connect to libvirt on $qemu_connect. Ensure libvirtd is running and accessible. Exiting..."
-            exit 1
-        fi
-
-        # List directory
-        echo "[INFO] Listing directory on $host: $VM_IMAGES_PATH..."
-        ssh $SSH_OPTIONS "$SSH_USER@$host" "ls -al $VM_IMAGES_PATH"
-        echo ""
-
-        # Remove existing ISO
-        if ssh $SSH_OPTIONS "$SSH_USER@$host" "[[ -f $VM_IMAGES_PATH/$ISO_FILE ]]"; then
-            echo "[INFO] Removing existing ISO on $host: $VM_IMAGES_PATH/$ISO_FILE..."
-            ssh $SSH_OPTIONS "$SSH_USER@$host" "rm -f $VM_IMAGES_PATH/$ISO_FILE"
-            echo ""
-
-            echo "[INFO] Listing directory on $host: $VM_IMAGES_PATH..."
-            ssh $SSH_OPTIONS "$SSH_USER@$host" "ls -al $VM_IMAGES_PATH"
-            echo ""
-        fi
-
-        # Copy new ISO
-        echo "[INFO] Copying ISO to $host: $VM_IMAGES_PATH..."
-        if ! scp $SSH_OPTIONS "$ISO_FILE" "$SSH_USER@$host:$VM_IMAGES_PATH/"; then
-            echo "[ERROR] Failed to copy ISO to $host:$VM_IMAGES_PATH. Exiting..."
-            exit 1
-        fi
-        echo "[INFO] Successfully copied ISO to $VM_IMAGES_PATH on $host."
-    fi
-    echo "[INFO] Using QEMU connection: $qemu_connect for hypervisor $host."
-done
-
-### Validate required variables
-echo "[INFO] Starting validation of required variables for $script_name..."
-unset required_vars
-declare -a required_vars=("CLUSTER_NAME" "OCP_VERSION")
-for var in "${required_vars[@]}"; do
-    if [[ -z "${!var}" ]]; then
-        echo "[ERROR] $var is not defined or empty. Exiting..."
+    if [[ ${#mac_addresses[@]} -eq 0 ]]; then
+        echo "[ERROR] No MAC addresses found for hostname '$hostname' in NODE_INFO_LIST. Exiting..."
         exit 1
     fi
-done
-echo "[INFO] Successfully validated required variables."
 
-### Validate directories and files
-echo "[INFO] Checking directories and files..."
-if [[ ! -d "$VM_IMAGES_PATH" ]]; then
-    echo "[ERROR] Directory $VM_IMAGES_PATH does not exist. Exiting..."
-    exit 1
-fi
-if [[ ! -f "$RHCOS_AGENT_ISO_FILE" ]]; then
-    echo "[ERROR] ISO file $RHCOS_AGENT_ISO_FILE does not exist. Exiting..."
-    exit 1
-fi
-echo "[INFO] Successfully validated directories and files."
+    echo "${mac_addresses[@]}"
+}
 
-### Validate list sizes
-echo "[INFO] Validating list sizes..."
-node_count=$(echo "$NODE_INFO_LIST" | tr -s ' ' '\n' | wc -l)
-vm_count=$(echo "$VM_INFO_LIST" | tr -s ' ' '\n' | wc -l)
-if [[ $node_count -ne $vm_count ]]; then
-    echo "[ERROR] Mismatch in list sizes: NODE_INFO_LIST ($node_count), VM_INFO_LIST ($vm_count). Exiting..."
-    exit 1
-fi
-echo "[INFO] Validated list sizes: NODE_INFO_LIST ($node_count), VM_INFO_LIST ($vm_count)."
+### Parse VM_INFO_LIST and create VMs
+for vm_line in "${VM_INFO_LIST[@]}"; do
+    ### Skip empty lines
+    [[ -z "$vm_line" ]] && continue
 
-### Validate names
-echo "[INFO] Validating names..."
-node_names=$(echo "$NODE_INFO_LIST" | tr -s ' ' '\n' | awk -F "--" '{print $2}' | sort)
-vm_names=$(echo "$VM_INFO_LIST" | tr -s ' ' '\n' | awk -F "--" '{print $2}' | sort)
-if [[ "$node_names" != "$vm_names" ]]; then
-    echo "[ERROR] Name mismatch: VM names ($(echo "$vm_names" | tr '\n' ' ')) do not match NODE_INFO_LIST names ($(echo "$node_names" | tr '\n' ' ')). Exiting..."
-    exit 1
-fi
-echo "[INFO] Validated names: all VM names match NODE_INFO_LIST names."
+    ### Remove whitespace
+    vm_line=$(echo "$vm_line" | tr -d '[:space:]')
 
-### Create VMs
-echo "[INFO] Starting VM creation for $script_name..."
-for host in $hosts; do
+    ### Parse VM info
+    IFS='|' read -r host vmname cpu memory root_disk add_disk <<< "$(echo "$vm_line" | sed 's/--/|/g')"
+    echo "[DEBUG] Parsed VM_INFO_LIST entry: host='$host', vmname='$vmname', cpu='$cpu', memory='$memory', root_disk='$root_disk', add_disk='$add_disk'"
+
+    ### Check if add_disk is required when ADD_DEVICE_NAME is set
+    if [[ -n "$ADD_DEVICE_NAME" && "$ROOT_DEVICE_NAME" != "$ADD_DEVICE_NAME" && -z "$add_disk" ]]; then
+        echo "[ERROR] ADD_DEVICE_NAME is set but add_disk is empty in VM_INFO_LIST entry: '$vm_line'. Exiting..."
+        exit 1
+    fi
+
+    ### Set QEMU connection based on host
     if [[ "$host" == "localhost" ]]; then
         qemu_connect="qemu:///system"
     else
+        if [[ -z "$SSH_USER" ]]; then
+            echo "[ERROR] SSH_USER is not set for remote host '$host'. Exiting..."
+            exit 1
+        fi
         qemu_connect="qemu+ssh://${SSH_USER}@${host}/system"
     fi
 
-    vm_entries=$(echo "$VM_INFO_LIST" | tr -s ' ' '\n' | grep "^${host}--")
-    if [[ -z "$vm_entries" ]]; then
-        echo "[WARNING] No VMs found for hypervisor $host. Skipping..."
-        continue
+    ### Get MAC addresses for the VM
+    read -r -a mac_addresses <<< "$(get_mac_addresses "$vmname")"
+    echo "[DEBUG] MAC addresses for '$vmname': ${mac_addresses[*]}"
+
+    ### Prepare network options for virt-install
+    network_options=""
+    for i in "${!mac_addresses[@]}"; do
+        mac="${mac_addresses[$i]}"
+        network_options+=" --network bridge=bridge$i,mac=$mac"
+    done
+    echo "[DEBUG] Network options: $network_options"
+
+    ### Define VM disk and ISO paths
+    virt_dir="/var/lib/libvirt/images"
+    iso_file="${CLUSTER_NAME}-v${OCP_VERSION}_agent.x86_64.iso"
+
+    ### Validate ISO file
+    if [[ ! -f "$iso_file" ]]; then
+        echo "[ERROR] ISO file '$iso_file' does not exist. Exiting..."
+        exit 1
     fi
 
-    for vminfo in $vm_entries; do
-        HOST=$(echo "$vminfo" | awk -F "--" '{print $1}')
-        NAME=$(echo "$vminfo" | awk -F "--" '{print $2}')
-        CPU=$(echo "$vminfo" | awk -F "--" '{print $3}')
-        MEMORY=$(echo "$vminfo" | awk -F "--" '{print $4}')
+    ### Copy ISO file to host
+    if [[ "$host" == "localhost" ]]; then
+        echo "[INFO] Copying ISO file to local host '$host'."
+        if [[ -f "$virt_dir/$iso_file" ]]; then
+            rm -f "$virt_dir/$iso_file" || {
+                echo "[ERROR] Failed to remove existing ISO file on local host '$host'. Exiting..."
+                exit 1
+            }
 
-        ### Retrieve MAC address from NODE_INFO_LIST
-        echo "[INFO] Retrieving MAC address for VM $NAME..."
-        mac_address=$(echo "$NODE_INFO_LIST" | tr -s ' ' '\n' | grep -- "--${NAME}--" | awk -F "--" '{print $4}')
-        if [[ -z "$mac_address" ]]; then
-            echo "[ERROR] No MAC address found for VM $NAME in NODE_INFO_LIST. Exiting..."
-            exit 1
+            echo "[INFO] ls -l $virt_dir"
+            ls -l "$virt_dir"
+            echo ""
         fi
-        if [[ ! "$mac_address" =~ ^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$ ]]; then
-            echo "[ERROR] Invalid MAC address format: $mac_address for VM $NAME. Exiting..."
+        echo "[INFO] Copying ISO file to '$virt_dir'."
+        cp "$iso_file" "$virt_dir/" || {
+            echo "[ERROR] Failed to copy ISO file to local host '$host'. Exiting..."
             exit 1
-        fi
-        echo "[INFO] Retrieved MAC address $mac_address for VM $NAME."
-
-        ### Create VM
-        echo "[INFO] Creating VM $NAME with connect=$qemu_connect, CPU=$CPU, MEMORY=$MEMORY, MAC=$mac_address..."
-        virt-install \
-            --connect "${qemu_connect}" \
-            --name "${NAME}" \
-            --cpu host \
-            --vcpus "${CPU}" \
-            --memory "${MEMORY}" \
-            --disk "${VM_IMAGES_PATH}/${NAME}-01.qcow2,size=100,bus=virtio" \
-            --cdrom "${RHCOS_AGENT_ISO_FILE}" \
-            --network "${VM_NETWORK_01},mac=${mac_address}" \
-            --boot hd \
-            --os-variant rhel9-unknown \
-            --noautoconsole \
-            --wait \
-            2>&1 &
+        }
+        echo "[INFO] ls -l $virt_dir"
+        ls -l "$virt_dir"
         echo ""
-    done
+    else
+        echo "[INFO] Copying ISO file to remote host '$host'."
+        if ssh "${SSH_USER}@${host}" "[ -f $virt_dir/$iso_file ]"; then
+            echo "[INFO] ISO file already exists on remote host '$host'. Skipping copy."
+        else
+            scp "$iso_file" "${SSH_USER}@${host}:${virt_dir}/" || {
+                echo "[ERROR] Failed to copy ISO file to remote host '$host'. Exiting..."
+                exit 1
+            }
+        fi
+        ssh "${SSH_USER}@${host}" "ls -l $virt_dir" || {
+            echo "[ERROR] Failed to list directory on remote host '$host'. Exiting..."
+            exit 1
+        }
+    fi
+    echo "[INFO] ISO file '$iso_file' copied successfully to host '$host'."
+
+    ### Prepare disk options
+    disk_options="--disk ${virt_dir}/${vmname}_root.qcow2,size=${root_disk},bus=virtio"
+    if [[ -n "$add_disk" && -n "$ADD_DEVICE_NAME" && "$ROOT_DEVICE_NAME" != "$ADD_DEVICE_NAME" ]]; then
+        disk_options+=" --disk ${virt_dir}/${vmname}_add.qcow2,size=${add_disk},bus=virtio"
+    fi
+
+    ### Run virt-install
+    virt_install_cmd="virt-install \
+        --connect $qemu_connect \
+        --name $vmname \
+        --vcpus $cpu \
+        --memory $memory \
+        $disk_options \
+        --cdrom $virt_dir/$iso_file \
+        $network_options \
+        --os-variant rhel9-unknown \
+        --boot hd \
+        --noautoconsole \
+        --wait \
+        2>&1 &"
+
+    echo "[INFO] Creating VM '$vmname' on host '$host' with QEMU connection '$qemu_connect' and MAC addresses: ${mac_addresses[*]}"
+    if ! eval "$virt_install_cmd"; then
+        echo "[ERROR] Failed to create VM '$vmname' on host '$host'. Exiting..."
+        exit 1
+    fi
+
+    echo "[INFO] VM '$vmname' creation started successfully."
 done
+
+echo "[INFO] All VMs provisioned successfully."

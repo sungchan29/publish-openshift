@@ -90,8 +90,12 @@ if [[ -n "${NTP_SERVER_02:-}" ]]; then
   - $NTP_SERVER_02
 EOF
 fi
-cat << EOF >> ./$CLUSTER_NAME/orig/agent-config.yaml
+if [[ ${worker_count} -gt 0 ]]; then
+    cat << EOF >> ./$CLUSTER_NAME/orig/agent-config.yaml
 rendezvousIP: $RENDEZVOUS_IP
+EOF
+fi
+cat << EOF >> ./$CLUSTER_NAME/orig/agent-config.yaml
 hosts:
 EOF
 

@@ -47,8 +47,8 @@ if [[ ! -f "./$CLUSTER_NAME/orig/agent-config.yaml" ]]; then
 fi
 
 ### Count master and worker nodes
-master_count=$(grep -E "^\s*role:\s*master\s*$" ./$CLUSTER_NAME/orig/agent-config.yaml | wc -l)
-worker_count=$(grep -E "^\s*role:\s*worker\s*$" ./$CLUSTER_NAME/orig/agent-config.yaml | wc -l)
+master_count=$(grep -E "^\s*role:\s*master\s*$" "./$CLUSTER_NAME/orig/agent-config.yaml" | wc -l || true)
+worker_count=$(grep -E "^\s*role:\s*worker\s*$" "./$CLUSTER_NAME/orig/agent-config.yaml" | wc -l || true)
 
 ###
 ### Create install-config.yaml
