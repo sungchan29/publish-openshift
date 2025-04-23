@@ -353,3 +353,5 @@ if [[ -f "$MIRROR_REGISTRY_TRUST_FILE" ]]; then
 
     echo ""
 fi
+
+NODE_INTERFACE_MAX_NUM=${NODE_INTERFACE_MAX_NUM:-3}
