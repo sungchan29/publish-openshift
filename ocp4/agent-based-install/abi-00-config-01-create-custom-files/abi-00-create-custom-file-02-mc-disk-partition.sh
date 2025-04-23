@@ -14,8 +14,6 @@ if ! source "$config_file"; then
     exit 1
 fi
 
-### Validate OCP_VERSION
-
 butane_ocp_version="$(echo "$OCP_VERSION" | awk '{print $NF}' | sed 's/\.[0-9]*$/\.0/')"
 
 ### Disk partitions are created on OpenShift Container Platform cluster nodes during the Red Hat Enterprise Linux CoreOS (RHCOS) installation.

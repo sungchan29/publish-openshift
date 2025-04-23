@@ -17,9 +17,6 @@ fi
 ### Validate required variables
 validate_file "$PULL_SECRET"
 
-### Validate variable formats
-
-
 ### Validate pull-secret
 if command -v jq >/dev/null 2>&1; then
     if ! jq -e . "$PULL_SECRET" >/dev/null 2>&1; then
