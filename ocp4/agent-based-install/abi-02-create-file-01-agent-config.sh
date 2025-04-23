@@ -107,12 +107,12 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
         fi
 
         # Validate interface fields
-        validate_mac      "mac_address_$i"      "$mac_address"      "$context" || exit 1
-        validate_ipv4     "ip_address_$i"       "$ip_address"       "$context" || exit 1
-        validate_prefix   "prefix_length_$i"    "$prefix_length"    "$context" || exit 1
-        validate_cidr     "destination_$i"      "$destination"      "$context" || exit 1
-        validate_ipv4     "next_hop_address_$i" "$next_hop_address" "$context" || exit 1
-        validate_table_id "table_id_$i"         "$table_id"         "$context" || exit 1
+        validate_mac      "mac_address_$i"      "$mac_address"      "$context"
+        validate_ipv4     "ip_address_$i"       "$ip_address"       "$context"
+        validate_prefix   "prefix_length_$i"    "$prefix_length"    "$context"
+        validate_cidr     "destination_$i"      "$destination"      "$context"
+        validate_ipv4     "next_hop_address_$i" "$next_hop_address" "$context"
+        validate_table_id "table_id_$i"         "$table_id"         "$context"
 
         # Store interface data in array
         interfaces["name_$i"]="$interface_name"
