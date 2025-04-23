@@ -40,7 +40,16 @@ DNS_SERVER_01="11.119.120.28"
 DNS_SERVER_02=""
 RENDEZVOUS_IP="11.119.120.111"
 
+        validate_mac      "mac_address_$i"      "$mac_address"      "$context"
+        validate_ipv4     "ip_address_$i"       "$ip_address"       "$context"
+        validate_prefix   "prefix_length_$i"    "$prefix_length"    "$context"
+        validate_cidr     "destination_$i"      "$destination"      "$context"
+        validate_ipv4     "next_hop_address_$i" "$next_hop_address" "$context"
+        validate_table_id "table_id_$i"         "$table_id"         "$context"
+
 ### Node Information
+###   Node info : role--hostname--<Interface info 1>[<Interface info 2>][...][<Interface info $NODE_INTERFACE_MAX_NUM>]
+###   Interface info : <interface_name--mac_address--ip_address--prefix_length--destination--next_hop_address(gateway)--table_id>
 NODE_INFO_LIST=(
     "master--sno--enp1s0--52:54:00:7d:e1:09--11.119.120.109--24--0.0.0.0/0--11.119.120.28--254"
 )

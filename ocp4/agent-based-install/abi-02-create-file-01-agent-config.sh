@@ -73,20 +73,20 @@ EOF
 max_interfaces=${NODE_INTERFACE_MAX_NUM:-3}
 
 for nodeinfo in "${NODE_INFO_LIST[@]}"; do
-    # Convert separators and split
+    ### Convert separators and split
     IFS='|' read -r -a fields <<< "$(echo "$nodeinfo" | sed 's/--/|/g')"
     role="${fields[0]}"
     hostname="${fields[1]}"
     context="$role--$hostname"
 
-    # Validate role and hostname
+    ### Validate role and hostname
     validate_role "role" "$role" "$context"
 
-    # Initialize arrays for interface data
+    ### Initialize arrays for interface data
     declare -A interfaces
     interface_count=0
 
-    # Validate interfaces
+    ### Validate interfaces
     for ((i=1; i<=max_interfaces; i++)); do
         offset=$(( (i-1)*7 + 2 ))
         interface_name="${fields[$offset]:-}"
@@ -97,7 +97,7 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
         next_hop_address="${fields[$((offset+5))]:-}"
         table_id="${fields[$((offset+6))]:-}"
 
-        # Break if no more interfaces
+        ### Break if no more interfaces
         if [[ -z "$interface_name" ]]; then
             [[ $i -eq 1 ]] && {
                 echo "[ERROR] At least one interface required in node: $nodeinfo"
@@ -106,7 +106,7 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
             break
         fi
 
-        # Validate interface fields
+        ### Validate interface fields
         validate_mac      "mac_address_$i"      "$mac_address"      "$context"
         validate_ipv4     "ip_address_$i"       "$ip_address"       "$context"
         validate_prefix   "prefix_length_$i"    "$prefix_length"    "$context"
@@ -114,7 +114,7 @@ for nodeinfo in "${NODE_INFO_LIST[@]}"; do
         validate_ipv4     "next_hop_address_$i" "$next_hop_address" "$context"
         validate_table_id "table_id_$i"         "$table_id"         "$context"
 
-        # Store interface data in array
+        ### Store interface data in array
         interfaces["name_$i"]="$interface_name"
         interfaces["mac_$i"]="$mac_address"
         interfaces["ip_$i"]="$ip_address"
@@ -193,7 +193,7 @@ EOF
         fi
     done
 
-    # Clean up interfaces array for the next host
+    ### Clean up interfaces array for the next host
     unset interfaces
 done
 
