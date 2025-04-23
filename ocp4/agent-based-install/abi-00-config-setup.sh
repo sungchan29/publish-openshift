@@ -333,12 +333,11 @@ if [[ -f "$MIRROR_REGISTRY_TRUST_FILE" ]]; then
             existing_auth=$(jq -r ".auths.\"${MIRROR_REGISTRY}\".auth // \"\"" "$PULL_SECRET" 2>/dev/null || echo "")
             if [[ "$existing_auth" == "$auth_encoding" ]]; then
                 should_write=0
-                message="[INFO] Pull secret '$PULL_SECRET' is up-to-date for '$MIRROR_REGISTRY'. Skipping..."
             else
-                message="[WARN] Pull secret '$PULL_SECRET' exists but does not match '$MIRROR_REGISTRY'. Overwriting..."
+                echo "[WARN] Pull secret '$PULL_SECRET' exists but does not match '$MIRROR_REGISTRY'. Overwriting..."
             fi
         else
-            message="[WARN] jq not found. Cannot verify pull secret content. Overwriting '$PULL_SECRET'..."
+            echo "[WARN] jq not found. Cannot verify pull secret content. Overwriting '$PULL_SECRET'..."
         fi
     fi
 
@@ -350,7 +349,5 @@ if [[ -f "$MIRROR_REGISTRY_TRUST_FILE" ]]; then
         }
     fi
 
-    # Output message and pull secret content
-    echo "$message"
     echo ""
 fi
