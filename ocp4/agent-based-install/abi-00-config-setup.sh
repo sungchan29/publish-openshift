@@ -44,7 +44,7 @@ RENDEZVOUS_IP="11.119.120.111"
 
 NODE_INTERFACE_MAX_NUM=3
 ### Node Information
-###   Node info : role--hostname--<Interface info 1>[<Interface info 2>][...][<Interface info $NODE_INTERFACE_MAX_NUM>]
+###   Node info : role--hostname--<Interface info 1>[--<Interface info 2>][...][--<Interface info $NODE_INTERFACE_MAX_NUM>]
 ###   Interface info : <interface_name--mac_address--ip_address--prefix_length--destination--next_hop_address(gateway)--table_id>
 NODE_INFO_LIST=(
     "master--sno--enp1s0--52:54:00:7d:e1:09--11.119.120.109--24--0.0.0.0/0--11.119.120.28--254"
