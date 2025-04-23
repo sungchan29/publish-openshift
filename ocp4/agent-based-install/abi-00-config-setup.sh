@@ -103,7 +103,8 @@ ADDITIONAL_MANIFEST="$PWD/$CLUSTER_NAME/orig/openshift"
 
 
 ###
-### This section defines functions for validating configuration values used in the agent-based installation.
+### This section defines functions for validating configuration values used in the agent-based installation
+###   or sets default values for variables that are empty.
 ###
 validate_file() {
     local file="$1"
