@@ -101,7 +101,10 @@ VULNERABILITY_MITIGATION_DIR="$PWD/$CLUSTER_NAME/orig/vulnerability-mitigation"
 BUTANE_BU_DIR="$PWD/$CLUSTER_NAME/orig/bu"
 ADDITIONAL_MANIFEST="$PWD/$CLUSTER_NAME/orig/openshift"
 
-### Validation Functions
+
+###
+### This section defines functions for validating configuration values used in the agent-based installation.
+###
 validate_file() {
     local file="$1"
     if [[ ! -f "$file" ]]; then
@@ -354,4 +357,7 @@ if [[ -f "$MIRROR_REGISTRY_TRUST_FILE" ]]; then
     echo ""
 fi
 
+INGRESS_REPLICAS=${INGRESS_REPLICAS:-3}
 NODE_INTERFACE_MAX_NUM=${NODE_INTERFACE_MAX_NUM:-3}
+MAX_TRIES=${MAX_TRIES:-3}
+TIMEOUT=${TIMEOUT:-7200}
