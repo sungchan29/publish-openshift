@@ -197,4 +197,4 @@ for vm_line in "${VM_INFO_LIST[@]}"; do
     fi
     echo "[INFO] VM '$vmname' creation started successfully."
 done
-echo "[INFO] All VMs provisioned successfully."
+echo ""
