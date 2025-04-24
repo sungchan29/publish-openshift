@@ -107,41 +107,66 @@ for vm_line in "${VM_INFO_LIST[@]}"; do
 
     ### Copy ISO file to host
     if [[ "$host" == "localhost" ]]; then
-        echo "[INFO] Copying ISO file to local host '$host'."
+        ### Copy ISO file to local host
+        echo "[INFO] Checking and copying ISO file to local host '$host'."
+        ### Check if the ISO file exists on the local host
         if [[ -f "$virt_dir/$iso_file" ]]; then
+            echo "[INFO] ISO file exists on local host '$host'. Deleting it."
             rm -f "$virt_dir/$iso_file" || {
-                echo "[ERROR] Failed to remove existing ISO file on local host '$host'. Exiting..."
+                echo "[ERROR] Failed to delete existing ISO file on local host '$host'. Exiting..."
                 exit 1
             }
-
-            echo "[INFO] ls -l $virt_dir"
-            ls -l "$virt_dir"
-            echo ""
         fi
-        echo "[INFO] Copying ISO file to '$virt_dir'."
+        ### List the local directory contents before copying
+        echo "[INFO] Listing directory on local host: ls -l $virt_dir"
+            ls -l "$virt_dir" || {
+            echo "[ERROR] Failed to list directory on local host '$host'. Exiting..."
+            exit 1
+        }
+        ### Copy the ISO file to the local host
+        echo "[INFO] Copying ISO file to '$virt_dir' on local host '$host'."
         cp "$iso_file" "$virt_dir/" || {
             echo "[ERROR] Failed to copy ISO file to local host '$host'. Exiting..."
             exit 1
         }
-        echo "[INFO] ls -l $virt_dir"
-        ls -l "$virt_dir"
-        echo ""
-    else
-        echo "[INFO] Copying ISO file to remote host '$host'."
+        ### List the local directory contents after copying
+        echo "[INFO] Listing directory on local host: ls -l $virt_dir"
+        ls -l "$virt_dir" || {
+            echo "[ERROR] Failed to list directory on local host '$host'. Exiting..."
+            exit 1
+        }
+        echo "[INFO] ISO file '$iso_file' copied successfully to local host '$host'."
+else
+        ### Copy ISO file to remote host via SSH
+        echo "[INFO] Checking and copying ISO file to remote host '$host'."
+        ### Check if the ISO file exists on the remote host
         if ssh "${SSH_USER}@${host}" "[ -f $virt_dir/$iso_file ]"; then
-            echo "[INFO] ISO file already exists on remote host '$host'. Skipping copy."
-        else
-            scp "$iso_file" "${SSH_USER}@${host}:${virt_dir}/" || {
-                echo "[ERROR] Failed to copy ISO file to remote host '$host'. Exiting..."
+            echo "[INFO] ISO file exists on remote host '$host'. Deleting it."
+            ssh "${SSH_USER}@${host}" "rm -f $virt_dir/$iso_file" || {
+                echo "[ERROR] Failed to delete existing ISO file on remote host '$host'. Exiting..."
                 exit 1
             }
         fi
+        ### List the remote directory contents before copying
+        echo "[INFO] Listing directory on remote host: ls -l $virt_dir"
         ssh "${SSH_USER}@${host}" "ls -l $virt_dir" || {
             echo "[ERROR] Failed to list directory on remote host '$host'. Exiting..."
             exit 1
         }
+        ### Copy the ISO file to the remote host
+        echo "[INFO] Copying ISO file to '$virt_dir' on remote host '$host'."
+        scp "$iso_file" "${SSH_USER}@${host}:${virt_dir}/" || {
+            echo "[ERROR] Failed to copy ISO file to remote host '$host'. Exiting..."
+            exit 1
+        }
+        ### List the remote directory contents after copying
+        echo "[INFO] Listing directory on remote host: ls -l $virt_dir"
+        ssh "${SSH_USER}@${host}" "ls -l $virt_dir" || {
+            echo "[ERROR] Failed to list directory on remote host '$host'. Exiting..."
+            exit 1
+        }
+        echo "[INFO] ISO file '$iso_file' copied successfully to remote host '$host'."
     fi
-    echo "[INFO] ISO file '$iso_file' copied successfully to host '$host'."
 
     ### Prepare disk options
     disk_options="--disk ${virt_dir}/${vmname}_root.qcow2,size=${root_disk},bus=virtio"
@@ -169,8 +194,6 @@ for vm_line in "${VM_INFO_LIST[@]}"; do
         echo "[ERROR] Failed to create VM '$vmname' on host '$host'. Exiting..."
         exit 1
     fi
-
     echo "[INFO] VM '$vmname' creation started successfully."
 done
-
 echo "[INFO] All VMs provisioned successfully."
