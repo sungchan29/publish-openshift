@@ -105,6 +105,27 @@ for vm_line in "${VM_INFO_LIST[@]}"; do
         exit 1
     fi
 
+    ### Prepare disk options
+    disk_options="--disk ${virt_dir}/${vmname}_root.qcow2,size=${root_disk},bus=virtio"
+    if [[ -n "$add_disk" && -n "$ADD_DEVICE_NAME" && "$ROOT_DEVICE_NAME" != "$ADD_DEVICE_NAME" ]]; then
+        disk_options+=" --disk ${virt_dir}/${vmname}_add.qcow2,size=${add_disk},bus=virtio"
+    fi
+
+    ### virt-install Command
+    virt_install_cmd="virt-install \
+        --connect $qemu_connect \
+        --name $vmname \
+        --vcpus $cpu \
+        --memory $memory \
+        $disk_options \
+        --cdrom $virt_dir/$iso_file \
+        $network_options \
+        --os-variant rhel9-unknown \
+        --boot hd \
+        --noautoconsole \
+        --wait \
+        2>&1 &"
+
     ### Copy ISO file to host
     if [[ "$host" == "localhost" ]]; then
         ### Copy ISO file to local host
@@ -136,7 +157,7 @@ for vm_line in "${VM_INFO_LIST[@]}"; do
             exit 1
         }
         echo "[INFO] ISO file '$iso_file' copied successfully to local host '$host'."
-else
+    else
         ### Copy ISO file to remote host via SSH
         echo "[INFO] Checking and copying ISO file to remote host '$host'."
         ### Check if the ISO file exists on the remote host
@@ -168,27 +189,7 @@ else
         echo "[INFO] ISO file '$iso_file' copied successfully to remote host '$host'."
     fi
 
-    ### Prepare disk options
-    disk_options="--disk ${virt_dir}/${vmname}_root.qcow2,size=${root_disk},bus=virtio"
-    if [[ -n "$add_disk" && -n "$ADD_DEVICE_NAME" && "$ROOT_DEVICE_NAME" != "$ADD_DEVICE_NAME" ]]; then
-        disk_options+=" --disk ${virt_dir}/${vmname}_add.qcow2,size=${add_disk},bus=virtio"
-    fi
-
-    ### Run virt-install
-    virt_install_cmd="virt-install \
-        --connect $qemu_connect \
-        --name $vmname \
-        --vcpus $cpu \
-        --memory $memory \
-        $disk_options \
-        --cdrom $virt_dir/$iso_file \
-        $network_options \
-        --os-variant rhel9-unknown \
-        --boot hd \
-        --noautoconsole \
-        --wait \
-        2>&1 &"
-
+    ### Execute command
     echo "[INFO] Creating VM '$vmname' on host '$host' with QEMU connection '$qemu_connect' and MAC addresses: ${mac_addresses[*]}"
     if ! eval "$virt_install_cmd"; then
         echo "[ERROR] Failed to create VM '$vmname' on host '$host'. Exiting..."
