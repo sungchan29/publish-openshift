@@ -54,6 +54,16 @@ get_mac_addresses() {
     echo "${mac_addresses[@]}"
 }
 
+### ISO paths
+virt_dir="/var/lib/libvirt/images"
+iso_file="${CLUSTER_NAME}-v${OCP_VERSION}_agent.x86_64.iso"
+
+### Validate ISO file
+if [[ ! -f "$iso_file" ]]; then
+    echo "[ERROR] ISO file '$iso_file' does not exist. Exiting..."
+    exit 1
+fi
+
 ### Parse VM_INFO_LIST and create VMs
 for vm_line in "${VM_INFO_LIST[@]}"; do
     ### Skip empty lines
@@ -94,16 +104,6 @@ for vm_line in "${VM_INFO_LIST[@]}"; do
         network_options+=" --network bridge=bridge$i,mac=$mac"
     done
     echo "[DEBUG] Network options: $network_options"
-
-    ### Define VM disk and ISO paths
-    virt_dir="/var/lib/libvirt/images"
-    iso_file="${CLUSTER_NAME}-v${OCP_VERSION}_agent.x86_64.iso"
-
-    ### Validate ISO file
-    if [[ ! -f "$iso_file" ]]; then
-        echo "[ERROR] ISO file '$iso_file' does not exist. Exiting..."
-        exit 1
-    fi
 
     ### Prepare disk options
     disk_options="--disk ${virt_dir}/${vmname}_root.qcow2,size=${root_disk},bus=virtio"
