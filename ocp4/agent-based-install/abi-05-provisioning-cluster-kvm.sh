@@ -15,7 +15,7 @@ if ! source "$CONFIG_FILE"; then
 fi
 
 ### VM_INFO_LIST definition
-### Format: host--name--cpu--memory--root_disk--add_disk
+### Format: host--name--cpu--memory(M)--root_disk_size(G)--add_disk_size(G)
 VM_INFO_LIST=(
     "localhost--sno--16--32768--100--30"
 )
