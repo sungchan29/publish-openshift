@@ -79,7 +79,7 @@ while [[ $tries -le $MAX_TRIES ]]; do
                 echo "[$(date +"%Y-%m-%d %H:%M:%S")] [INFO] Applying node labels..." | tee -a $log_file
                 all_labels_applied=true
                 for node_role_selector in $NODE_ROLE_SELECTORS; do
-                    node_role=$(  echo "$node_role_selector" | awk -F "--" '{print $1}')
+                    node_role=$(echo "$node_role_selector" | awk -F "--" '{print $1}')
                     node_name=$(echo "$node_role_selector" | awk -F "--" '{print $2}')
                     nodes="$(timeout 3s ./oc get nodes --no-headers -o custom-columns=":metadata.name" 2>/dev/null | egrep -E "${node_name}")"
                     if [[ -n "$nodes" ]]; then
