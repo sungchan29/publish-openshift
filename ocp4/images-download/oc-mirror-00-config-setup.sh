@@ -68,7 +68,7 @@ BUTANE_DOWNLOAD_URL="https://mirror.openshift.com/pub/openshift-v4/clients/butan
 ###   - "aggregated": Single YAML file with all versions combined
 ###   - "incremental": Cumulative YAML files, adding versions step-by-step
 ###   - "individual": Separate YAML file per version
-### Default Value: "incremental" (if not specified)
+### Default Value: "individual" (if not specified)
 MIRROR_STRATEGY=""
 
 ### Operator catalog sources
@@ -197,7 +197,7 @@ if [[ -z "${OCP_VERSIONS}" ]]; then
 fi
 
 ### Define Default Value
-MIRROR_STRATEGY="${MIRROR_STRATEGY:-"incremental"}"
+MIRROR_STRATEGY="${MIRROR_STRATEGY:-"individual"}"
 PULL_OLM_INDEX_IMAGE="${PULL_OLM_INDEX_IMAGE:-"true"}"
 OLM_CATALOGS="${OLM_CATALOGS:-"redhat"}"
 
