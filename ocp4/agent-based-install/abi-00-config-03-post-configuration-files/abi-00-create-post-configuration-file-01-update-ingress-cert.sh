@@ -28,7 +28,7 @@ if [[ -f "$INGRESS_CUSTOM_ROOT_CA" && -f "$INGRESS_CUSTOM_TLS_KEY" && -f "$INGRE
     ### Create a config map that includes only the root CA certificate used to sign the wildcard certificate
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] [INFO] Creating ConfigMap: $CONFIGMAP_INGRESS_CUSTOM_ROOT_CA"
 
-    oc create configmap $CONFIGMAP_INGRESS_CUSTOM_ROOT_CA \
+    ./oc create configmap $CONFIGMAP_INGRESS_CUSTOM_ROOT_CA \
         --from-file=ca-bundle.crt=$INGRESS_CUSTOM_ROOT_CA \
         -n openshift-config
     
@@ -41,7 +41,7 @@ if [[ -f "$INGRESS_CUSTOM_ROOT_CA" && -f "$INGRESS_CUSTOM_TLS_KEY" && -f "$INGRE
     ### Update the cluster-wide proxy configuration with the newly created config map
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] [INFO] Patching the cluster-wide proxy configuration..."
 
-    oc patch proxy/cluster \
+    ./oc patch proxy/cluster \
         --type=merge \
         --patch "{\"spec\":{\"trustedCA\":{\"name\":\"$CONFIGMAP_INGRESS_CUSTOM_ROOT_CA\"}}}"
 
@@ -54,7 +54,7 @@ if [[ -f "$INGRESS_CUSTOM_ROOT_CA" && -f "$INGRESS_CUSTOM_TLS_KEY" && -f "$INGRE
     ### Create a secret that contains the wildcard certificate chain and key
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] [INFO] Creating Secret: $SECRET_INGRESS_CUSTOM_TLS"
 
-    oc create secret tls $SECRET_INGRESS_CUSTOM_TLS \
+    ./oc create secret tls $SECRET_INGRESS_CUSTOM_TLS \
         --cert=$INGRESS_CUSTOM_TLS_CERT --key=$INGRESS_CUSTOM_TLS_KEY \
         -n openshift-ingress
 
@@ -67,7 +67,7 @@ if [[ -f "$INGRESS_CUSTOM_ROOT_CA" && -f "$INGRESS_CUSTOM_TLS_KEY" && -f "$INGRE
     ### Update the Ingress Controller configuration with the newly created secret
     echo "[$(date +"%Y-%m-%d %H:%M:%S")] [INFO] Patching the Ingress Controller with the new TLS certificate..."
 
-    oc patch ingresscontroller.operator default \
+    ./oc patch ingresscontroller.operator default \
         --type=merge \
         -p "{\"spec\":{\"defaultCertificate\":{\"name\":\"$SECRET_INGRESS_CUSTOM_TLS\"}}}" \
         -n openshift-ingress-operator
