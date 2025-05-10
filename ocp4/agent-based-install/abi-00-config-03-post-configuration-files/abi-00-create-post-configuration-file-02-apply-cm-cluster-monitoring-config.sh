@@ -29,13 +29,6 @@ data:
       - effect: NoSchedule
         key: node-role.kubernetes.io/infra
         operator: Exists
-      volumeClaimTemplate:
-        metadata:
-          name: alertmanager-main-db
-        spec:
-          resources:
-            requests:
-              storage: 10Gi
     enableUserWorkload: false                  
     kubeStateMetrics:
       nodeSelector:
@@ -71,17 +64,7 @@ data:
       tolerations:
       - effect: NoSchedule
         key: node-role.kubernetes.io/infra
-        operator: Exists            
-      volumeClaimTemplate:
-        metadata:
-          name: prometheus-k8s-db
-        spec:
-          resources:
-            scrapeInterval: 1m
-            retention: 24h
-            retentionSize: 90GB
-            requests:
-              storage: 90Gi            
+        operator: Exists                     
     prometheusOperator:
       nodeSelector:
         node-role.kubernetes.io/infra: ""
