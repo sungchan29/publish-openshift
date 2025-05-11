@@ -14,7 +14,7 @@ if ! source "$config_file"; then
     exit 1
 fi
 
-cat << EOF | oc apply -f -
+cat << EOF | ./oc apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
