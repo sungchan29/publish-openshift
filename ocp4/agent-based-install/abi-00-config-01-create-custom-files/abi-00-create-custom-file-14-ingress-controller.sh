@@ -14,8 +14,13 @@ if ! source "$config_file"; then
     exit 1
 fi
 
-### Config ingress conroller
-if [[ -n "$INGRESS_REPLICAS" ]] && [[ -n "$INGRESS_NODE_SELECTOR_MATCH_LABEL_KEY" ]] && [[ -n "$INGRESS_NODE_SELECTOR_MATCH_LABEL_KEY" ]]; then
+### Set default INGRESS_NODE_SELECTOR_MATCH_LABEL_KEY if conditions are met
+if [[ -z "$NODE_ROLE_SELECTORS" ]] || ! echo "$NODE_ROLE_SELECTORS" | grep -q "infra"; then
+    INGRESS_NODE_SELECTOR_MATCH_LABEL_KEY="node-role.kubernetes.io/worker"
+fi
+
+### Config ingress controller
+if [[ -n "$INGRESS_REPLICAS" ]] && [[ -n "$INGRESS_NODE_SELECTOR_MATCH_LABEL_KEY" ]]; then
     cat << EOF > $ADDITIONAL_MANIFEST/ingress-controller.yaml
 apiVersion: operator.openshift.io/v1
 kind: IngressController
