@@ -19,8 +19,7 @@ fi
 
 ### Validate required variables
 if [[ ${#NODE_ROLE_SELECTORS[@]} -eq 0 ]]; then
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] [ERROR] NODE_ROLE_SELECTORS is empty or not set. Exiting..." | tee -a "$log_file"
-    exit 1
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] [INFO] NODE_ROLE_SELECTORS is empty or not set." | tee -a "$log_file"
 fi
 validate_non_empty "MAX_TRIES"                         "$MAX_TRIES"
 validate_non_empty "TIMEOUT"                           "$TIMEOUT"
