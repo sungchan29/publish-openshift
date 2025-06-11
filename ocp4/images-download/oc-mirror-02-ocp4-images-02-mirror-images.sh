@@ -1,8 +1,5 @@
 #!/bin/bash
 
-### Source logging functions from logging.sh
-source "$(dirname "$(realpath "$0")")/logging.sh"
-
 ### Source configuration file and validate its existence
 config_file="$(dirname "$(realpath "$0")")/oc-mirror-00-config-setup.sh"
 if [[ ! -f "$config_file" ]]; then
