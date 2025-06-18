@@ -142,7 +142,7 @@ CERTIFIED_OPERATORS=("gpu-operator-certified")
 
 ### List of Community Operators to mirror
 ### Specifies community operators to include in the mirroring process
-COMMUNITY_OPERATORS=""
+COMMUNITY_OPERATORS=("")
 
 ### Define the base working directory
 ### Purpose: Base directory for storing mirrored images and configuration files
