@@ -190,11 +190,11 @@ OC_MIRROR_RETRY_TIMES=""
 ### Set up directories for work, tools, and images
 ### ----------------------------------------
 if [[ ! -f "$PULL_SECRET_FILE" ]]; then
-    log "ERROR" "Pull secret file $PULL_SECRET_FILE does not exist. Exiting..."
+    echo "[ERROR] Pull secret file $PULL_SECRET_FILE does not exist. Exiting..."
     exit 1
 fi
 if ! command -v jq >/dev/null; then
-    log "ERROR" "jq command not found. Please install jq. Exiting..."
+    echo "[ERROR] jq command not found. Please install jq. Exiting..."
     exit 1
 fi
 
