@@ -276,10 +276,6 @@ set_contents() {
             log "WARN" "Empty package entry. Skipping..."
             continue
         }
-        [[ ! "$lc_package" =~ ^[^|]+\|.+$ ]] && {
-            log "WARN" "Invalid package format: $lc_package. Expected 'package_name|version...'. Skipping..."
-            continue
-        }
 
         ### Split package entry into name and versions
         IFS='|' read -r -a lc_version_parts <<< "$lc_package"
