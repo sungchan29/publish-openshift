@@ -1,0 +1,157 @@
+1. bind 패키지 설치
+dnf install -y bind
+
+2. named.conf 파일 백업
+if [[ ! -f /etc/named.conf.orig ]]; then
+  cp /etc/named.conf /etc/named.conf.orig
+fi
+
+###
+### 3. named.conf 수정(options 설정)
+###
+cat /etc/named.conf
+...
+options {
+        listen-on port 53 { 11.119.120.28; };
+        listen-on-v6 port 53 { ::1; };
+        directory "/var/named";
+        dump-file "/var/named/data/cache_dump.db";
+        statistics-file "/var/named/data/named_stats.txt";
+        memstatistics-file "/var/named/data/named_mem_stats.txt";
+        secroots-file"/var/named/data/named.secroots";
+        recursing-file"/var/named/data/named.recursing";
+        allow-query { any; };
+        recursion yes;
+        dnssec-enable no;
+        dnssec-validation no;
+        managed-keys-directory "/var/named/dynamic";
+        pid-file "/run/named/named.pid";
+        session-keyfile "/run/named/session.key";
+        include "/etc/crypto-policies/back-ends/bind.config";
+};
+...
+include "/etc/named.rfc1912.zones";
+include "/etc/named.root.key";
+
+###
+### 3. zone 설정
+###
+cat <<EOF >> /etc/named.rfc1912.zones
+zone "hub.tistory.disconnected" IN {
+        type master;
+        file "hub.tistory.disconnected.zone";
+        allow-update { none; };
+};
+zone "cloudpang.tistory.disconnected" IN {
+        type master;
+        file "cloudpang.tistory.disconnected.zone";
+        allow-update { none; };
+};
+zone "120.119.11.in-addr.arpa" IN {
+        type master;
+        file "120.119.11-in-addr.zone";
+        allow-update { none; };
+};
+EOF
+
+
+cat <<EOF > /var/named/hub.tistory.disconnected.zone
+\$ORIGIN hub.tistory.disconnected.
+\$TTL 86400
+@               IN      SOA     dns01.hub.tistory.disconnected. hostmaster.hub.tistory.disconnected. (
+                                2025061701 ; Serial
+                                21600      ; Refresh
+                                3600       ; Retry
+                                604800     ; Expire
+                                86400 )    ; Minimum TTL
+;
+                IN      NS      dns01.hub.tistory.disconnected.
+;
+dns01           IN      A       11.119.120.28
+;
+registry        IN      A       11.119.120.28
+;
+api             IN      A       11.119.120.100
+api-int         IN      A       11.119.120.100
+*.apps          IN      A       11.119.120.100
+;
+sno             IN      A       11.119.120.100
+;
+EOF
+
+cat <<EOF > /var/named/cloudpang.tistory.disconnected.zone
+\$ORIGIN cloudpang.tistory.disconnected.
+\$TTL 86400
+@               IN      SOA     dns01.cloudpang.tistory.disconnected. hostmaster.cloudpang.tistory.disconnected. (
+                                2025061701 ; Serial
+                                21600      ; Refresh
+                                3600       ; Retry
+                                604800     ; Expire
+                                86400 )    ; Minimum TTL
+;
+                IN      NS      dns01.cloudpang.tistory.disconnected.
+;
+dns01           IN      A       11.119.120.28
+;
+api             IN      A       11.119.120.28
+api-int         IN      A       11.119.120.28
+*.apps          IN      A       11.119.120.28
+;
+mst01           IN      A       11.119.120.111
+mst02           IN      A       11.119.120.112
+mst03           IN      A       11.119.120.113
+ifr01           IN      A       11.119.120.121
+ifr02           IN      A       11.119.120.122
+wrk01           IN      A       11.119.120.131
+wrk02           IN      A       11.119.120.132
+;
+EOF
+
+
+cat <<EOF > /var/named/120.119.11-in-addr.zone
+\$ORIGIN 120.119.11.in-addr.arpa.
+\$TTL 86400
+@               IN      SOA     dns01.hub.tistory.disconnected. hostmaster.hub.tistory.disconnected. (
+                                2025061702 ; Serial
+                                21600      ; Refresh
+                                3600       ; Retry
+                                604800     ; Expire
+                                86400 )    ; Minimum TTL
+;
+                IN      NS        dns01.hub.tistory.disconnected.
+;
+100             IN      PTR         api.hub.tistory.disconnected.
+100             IN      PTR     api-int.hub.tistory.disconnected.
+;
+100             IN      PTR         sno.hub.tistory.disconnected.
+;
+28              IN      PTR         api.cloudpang.tistory.disconnected.
+28              IN      PTR     api-int.cloudpang.tistory.disconnected.
+;
+111             IN      PTR       mst01.cloudpang.tistory.disconnected.
+112             IN      PTR       mst02.cloudpang.tistory.disconnected.
+113             IN      PTR       mst03.cloudpang.tistory.disconnected.
+121             IN      PTR       ifr01.cloudpang.tistory.disconnected.
+122             IN      PTR       ifr02.cloudpang.tistory.disconnected.
+131             IN      PTR       wrk01.cloudpang.tistory.disconnected.
+132             IN      PTR       wrk02.cloudpang.tistory.disconnected.
+;
+EOF
+
+chown root:named /var/named/hub.tistory.disconnected.zone
+chown root:named /var/named/cloudpang.tistory.disconnected.zone
+chown root:named /var/named/120.119.11-in-addr.zone
+
+chcon --reference=/var/named/named.empty /var/named/hub.tistory.disconnected.zone
+chcon --reference=/var/named/named.empty /var/named/cloudpang.tistory.disconnected.zone
+chcon --reference=/var/named/named.empty /var/named/120.119.11-in-addr.zone
+
+/usr/sbin/named-checkzone hub.tistory.disconnected       /var/named/hub.tistory.disconnected.zone
+/usr/sbin/named-checkzone cloudpang.tistory.disconnected /var/named/cloudpang.tistory.disconnected.zone
+/usr/sbin/named-checkzone 120.119.11.in-addr.arpa        /var/named/120.119.11-in-addr.zone
+
+systemctl enable named.service
+systemctl start named.service
+
+firewall-cmd --permanent --add-service=dns --zone=public
+firewall-cmd --reload
