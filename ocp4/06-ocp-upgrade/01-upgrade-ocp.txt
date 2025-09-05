@@ -1,0 +1,109 @@
+### Preparing to update a cluster
+https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/updating_clusters/preparing-to-update-a-cluster
+
+
+1. Checks to perform before updating a cluster:
+    1.1. Kubernetes API removals
+       There are no Kubernetes API removals in OpenShift Container Platform 4.18.
+    1.2. Ensure that the cluster is in an Upgradable state
+       When one or more Operators have not reported their Upgradeable condition as True for more than an hour, the ClusterNotUpgradeable warning alert is triggered in the cluster.
+    1.3. Ensure that enough spare nodes are available
+
+2. Updating a cluster in a disconnected environment without the OpenShift Update Service
+    https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/disconnected_environments/updating-a-cluster-in-a-disconnected-environment#updating-disconnected-cluster
+
+
+    2.1. etcd backups before cluster updates
+
+    2.2. Pausing a MachineHealthCheck resource
+        2.2.1. To list all the available MachineHealthCheck resources that you want to pause, run the following command:
+            oc -n openshift-machine-api get machinehealthcheck
+            oc -n openshift-machine-api get mhc
+
+        2.2.2. To pause a specific MachineHealthCheck resource, run the following command:
+            # oc -n openshift-machine-api annotate mhc <mhc-name> cluster.x-k8s.io/paused=""
+
+            oc -n openshift-machine-api annotate mhc machine-api-termination-handler cluster.x-k8s.io/paused="true" --overwrite
+
+    2.3. Updating a cluster by using the CLI
+        2.3.1. Installing the OpenShift CLI
+            https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/disconnected_environments/updating-a-cluster-in-a-disconnected-environment#cli-installing-cli_mirroring-ocp-image-repository
+
+            ### Inportant ###
+            If you installed an earlier version of oc, you cannot use it to complete all of the commands in OpenShift Container Platform 4.18. Download and install the new version of oc. If you are updating a cluster in a disconnected environment, install the oc version that you plan to update to.
+
+        2.3.2. Retrieving a release image digest
+            Run the following command on a device that is connected to the internet:
+                OCP_RELEASE_VERSION=4.18.19
+                ARCHITECTURE=x86_64
+
+                oc adm release info -o 'jsonpath={.digest}{"\n"}' quay.io/openshift-release-dev/ocp-release:${OCP_RELEASE_VERSION}-${ARCHITECTURE} --idms-file=./working-dir/cluster-resources/itms-oc-mirror.yaml
+
+                oc adm release info -o 'jsonpath={.digest}{"\n"}' registry.hub.tistory.disconnected:5000/ocp4/openshift/release-images:${OCP_RELEASE_VERSION}-${ARCHITECTURE} --insecure
+
+        2.3.3. Creating a signature ConfigMap
+                oc apply -f working-dir/cluster-resources/signature-configmap.yaml
+
+        2.3.4. Updating the disconnected cluster
+                oc adm upgrade --allow-explicit-upgrade --to-image <defined_registry>/<defined_repository>@<digest>
+
+                oc adm upgrade --allow-explicit-upgrade --to-image registry.hub.tistory.disconnected:5000/ocp4/openshift/release-images@sha256:e6d80b9ab85b17b47e90cb8de1b9ad0e3fe457780148629d329d532ef902d222
+
+        2.3.5. Checking the cluster version
+                oc describe clusterversions.config.openshift.io version
+
+        2.3.6. Gathering cluster update status using oc adm upgrade status (Technology Preview)
+                https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/updating_clusters/performing-a-cluster-update#update-upgrading-oc-adm-upgrade-status_updating-cluster-cli
+
+                export OC_ENABLE_CMD_UPGRADE_STATUS=true
+                oc adm upgrade status
+
+                watch "oc adm upgrade status; echo; echo '================='; echo; oc get co,nodes; echo; oc get clusterversion version"
+
+        2.3.7. Checking the cluster update status
+                oc get clusterversion
+
+                oc get clusterversion -o json | jq '.items[0].status.history[0].state'
+                oc get clusterversion -o json | jq '.items[0].status.history[0].version'
+                oc get clusterversion -o json | jq '.items[0].status.history[0].startedTime'
+                oc get clusterversion -o json | jq '.items[0].status.history[0].completionTime'
+
+
+2. Red Hat Operator Catalog Index Image 준비를 위해 다음과 같이 Operator Catalog를 확인
+    2.1. 이미지에서 Operator Catalog 추출
+        ### OCP_MAJOR_MINOR      : The major and minor version of the OpenShift Container Platform you are updating to (e.g., 4.18).
+        ### CATALOG_INDEX        : The Red Hat Operator Catalog index image to extract, specifying the version that matches your OCP version.
+        ### PULL_SECRET_FILE     : The path to the pull secret file downloaded from the Red Hat OpenShift Cluster Manager, used for authentication.
+        ### OLM_REDHAT_INDEX_DIR : The directory where the Red Hat Operator Catalog index image will be extracted.
+
+        OCP_MAJOR_MINOR=4.18
+        CATALOG_INDEX="registry.redhat.io/redhat/redhat-operator-index:v${OCP_MAJOR_MINOR}"
+        PULL_SECRET_FILE="/root/ocp4/download/pull-secret.txt"
+        OLM_REDHAT_INDEX_DIR=${PWD}/olm-redhat-operator-index-v${OCP_MAJOR_MINOR}
+        mkdir -p ${OLM_REDHAT_INDEX_DIR}
+
+        podman run \
+            --user $(id -u):$(id -g) \
+            --authfile "$PULL_SECRET_FILE" \
+            -i --rm \
+            -v "${OLM_REDHAT_INDEX_DIR}:/mnt:z" \
+            --entrypoint /bin/sh "$CATALOG_INDEX" \
+            -c "cp -R /configs/* /mnt/"
+
+    2.2. 사용 가능한 채널 목록 확인
+        ### For example, you can check the available channels for the openshift-gitops-operator
+        cat ${OLM_REDHAT_INDEX_DIR}/openshift-gitops-operator/catalog.json \
+            | jq -r 'select(.schema == "olm.channel") | .name' \
+            | sort -Vr -u
+
+    2.3. 기본 채널 확인
+        ### For example, you can check the default channel for the openshift-gitops-operator
+        cat ${OLM_REDHAT_INDEX_DIR}/openshift-gitops-operator/catalog.json \
+            | jq -r 'select(.schema == "olm.package") | .defaultChannel'
+
+    2.4. 채널에서 사용 가능한 버전의 skipRange 확인
+        ### For example, if the default channel is "latest", you can check the skipRange
+        channel="latest"
+        cat ${OLM_REDHAT_INDEX_DIR}/openshift-gitops-operator/catalog.json \
+            | jq -r --arg chan "$channel" 'select(.schema == "olm.channel" and .name == $chan) | .entries[] | [.name, .skipRange // "None"] | join(" (skipRange: ") + ")"' \
+            | sort -Vr -u
