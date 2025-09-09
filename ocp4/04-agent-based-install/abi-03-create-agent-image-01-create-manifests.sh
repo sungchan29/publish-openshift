@@ -148,7 +148,7 @@ done
 ### Copy additional manifests from the user-defined directory.
 echo "--- Copying additional user-defined manifests..."
 if [[ -d "$ADDITIONAL_MANIFEST" ]]; then
-    cp -Rf "$ADDITIONAL_MANIFEST/." "./$CLUSTER_NAME/" || {
+    cp -Rf "$ADDITIONAL_MANIFEST" "./$CLUSTER_NAME/" || {
         echo "ERROR: Failed to copy additional manifests from '$ADDITIONAL_MANIFEST'." >&2
         exit 1
     }
