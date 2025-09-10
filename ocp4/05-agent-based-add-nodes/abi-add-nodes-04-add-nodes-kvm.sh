@@ -124,7 +124,7 @@ done
 
 ### Set NETWORK_BRIDGES to the union of all host bridges (use localhost as default if available)
 NETWORK_BRIDGES=()
-if [[ -n "${host_bridges[localhost]}" ]]; then
+if [[ -n "${host_bridges[localhost]:-}" ]]; then
     IFS=' ' read -r -a NETWORK_BRIDGES <<< "${host_bridges[localhost]}"
 else
     # Use the first host's bridges if localhost is not used
