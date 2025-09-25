@@ -111,16 +111,51 @@ spec:
   sourceNamespace: "openshift-marketplace"
   name: "cincinnati-operator"
 EOF
-    printf "%-12s%-80s\n" "[INFO]" "Giving the cluster a moment to process the Subscription..."
-    printf "%-12s%-80s\n" "[INFO]" "-- Waiting for the updateservice-operator pod to become Ready..."
-    sleep 10
-    ### Wait for the pod to become Ready, hiding the command's own output.
-    if ! ./oc -n openshift-update-service wait pod -l name=updateservice-operator --for=condition=Ready --timeout=600s >/dev/null 2>&1; then
-        ### If the command fails (times out), print our custom error message and exit.
-        printf "\n%-12s%-80s\n" "[ERROR]" "Timed out waiting for the 'updateservice-operator' pod to become Ready." >&2
+
+    ### --- Robust Wait Logic --- ###
+    # This section is improved to be more robust.
+    # First, wait for the ClusterServiceVersion (CSV) to appear and succeed,
+    # which indicates the operator has been installed correctly by OLM.
+    
+    CSV_NAME=""
+    printf "%-12s%-80s\n" "[INFO]" "   -- Waiting for the Operator's CSV to be installed..."
+    ### Wait up to 5 minutes for the CSV to be created by the subscription.
+    for ((i=1; i<=60; i++)); do
+        ### Get the name of the CSV created for the 'cincinnati-operator'
+        CSV_NAME=$(./oc -n openshift-update-service get csv -o jsonpath='{.items[?(@.spec.displayName=="OpenShift Update Service")].metadata.name}' 2>/dev/null)
+        if [[ -n "$CSV_NAME" ]]; then
+            printf "\n%-12s%-80s\n" "[INFO]" "      Found CSV: $CSV_NAME. Waiting for it to succeed..."
+            break
+        fi
+        printf "\r%-12s%-80s" "[INFO]" "      - CSV not yet created. Retrying... ($i/60)"
+        sleep 5
+    done
+
+    if [[ -z "$CSV_NAME" ]]; then
+        printf "\n%-12s%-80s\n" "[ERROR]" "      Timed out waiting for the CSV to be created." >&2
+        printf "%-12s%-80s\n" ""          "      Please check the subscription status with: oc get sub -n openshift-update-service update-service-subscription -o yaml" >&2
         exit 1
     fi
-    printf "\n%-12s%-80s\n" "[INFO]" "   Success: updateservice-operator pod is now Ready."
+
+    ### Now wait for the CSV installation to succeed.
+    if ! ./oc -n openshift-update-service wait csv "$CSV_NAME" --for=jsonpath='{.status.phase}'=Succeeded --timeout=300s; then
+        printf "\n%-12s%-80s\n" "[ERROR]" "The operator CSV '$CSV_NAME' failed to reach 'Succeeded' phase." >&2
+        printf "%-12s%-80s\n" ""          "   Please check the CSV status with: oc describe csv $CSV_NAME -n openshift-update-service" >&2
+        exit 1
+    fi
+
+    printf "%-12s%-80s\n" "[INFO]" "   Success: Operator CSV is ready."
+    printf "%-12s%-80s\n" "[INFO]" "   -- Waiting for the updateservice-operator pod to become Ready..."
+
+    ### Now that the CSV is ready, the pod is guaranteed to exist. Wait for it to be Ready.
+    if ! ./oc -n openshift-update-service wait pod -l name=updateservice-operator --for=condition=Ready --timeout=300s; then
+        printf "\n%-12s%-80s\n" "[ERROR]" "   Failed or timed out waiting for the 'updateservice-operator' pod to become Ready." >&2
+        printf "%-12s%-80s\n" ""          "   Please check the pod status with: oc get pods -n openshift-update-service" >&2
+        exit 1
+    fi
+    
+    printf "%-12s%-80s\n" "[INFO]" "      Success: updateservice-operator pod is now Ready."
+
     ### Step 4/5: Deploy the OpenShift Update Service Instance
     printf "%-12s%-80s\n" "[INFO]" "Deploying the OpenShift Update Service Instance ..."
     printf "%-12s%-80s\n" "[INFO]" "-- Creating the 'UpdateService' application object..."
@@ -135,23 +170,23 @@ spec:
   releases: $MIRROR_REGISTRY/$LOCAL_REPOSITORY_NAME/release-images
   graphDataImage: $MIRROR_REGISTRY/openshift/graph-data:latest
 EOF
-    printf "%-12s%-80s\n" "[INFO]" "-- Waiting for the service endpoint (Policy Engine URI) to become available..."
+    printf "%-12s%-80s\n" "[INFO]" "   Waiting for the service endpoint (Policy Engine URI) to become available..."
     POLICY_ENGINE_GRAPH_URI=""
     for ((i=1; i<=300; i++)); do
         POLICY_ENGINE_GRAPH_URI="$(./oc -n openshift-update-service get -o jsonpath='{.status.policyEngineURI}/api/upgrades_info/v1/graph' updateservice service 2>/dev/null || true)"
         SCHEME="${POLICY_ENGINE_GRAPH_URI%%:*}"
 
-        if test "${SCHEME}" = http -o "${SCHEME}" = https; then
+        if [[ "${SCHEME}" == "http" || "${SCHEME}" == "https" ]]; then
             OSUS_POLICY_ENGINE_GRAPH_URI="$POLICY_ENGINE_GRAPH_URI"
-            printf "\n%-12s%-80s\n" "[INFO]" "   Success: Policy Engine URI obtained: $OSUS_POLICY_ENGINE_GRAPH_URI"
+            printf "%-12s%-80s\n" "[INFO]" "   Success: Policy Engine URI obtained: $OSUS_POLICY_ENGINE_GRAPH_URI"
             break
-        else
-            printf "\r%-12s%-80s" "[INFO]" "   - Attempt $i/300: URI not yet available. Retrying..."
         fi
+        printf "\r%-12s%-80s" "[INFO]" "   - Attempt $i/300: URI not yet available. Retrying..."
         sleep 2
     done
-    if test "${SCHEME}" != http -a "${SCHEME}" != https; then
-        printf "\n%-12s%-80s\n" "[ERROR]" "   Timed out waiting for the Policy Engine URI. Exiting..."
+    
+    if [[ "${SCHEME}" != "http" && "${SCHEME}" != "https" ]]; then
+        printf "%-12s%-80s\n" "[ERROR]" "   Timed out waiting for the Policy Engine URI. Exiting..."
         exit 1
     fi
 fi
