@@ -1,1 +1,0 @@
-This script generates OpenShift objects for installation. To skip specific manifests, please move them to the skip/ directory.
